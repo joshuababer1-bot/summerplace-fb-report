@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Summerplace · F&B Report Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Belleza&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,400;1,700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --dk:     #617D2F;
+  --md:     #6F973E;
+  --lt:     #B5C9A1;
+  --lt2:    #EEF3E8;
+  --ash:    #A0A57F;
+  --pro:    #ACC3BA;
+  --slt:    #4A5464;
+  --white:  #FFFFFF;
+  --off:    #F8F7F4;
+  --g1:     #F3F4F6;
+  --g2:     #E5E7EB;
+  --g3:     #9CA3AF;
+  --g4:     #6B7280;
+  --g5:     #374151;
+  --text:   #111827;
+  --amber:  #D97706;
+  --ambbg:  #FEF3C7;
+  --red:    #B91C1C;
+  --redbg:  #FEE2E2;
+  --shadow: 0 4px 24px rgba(97,125,47,0.10);
+  --radius: 12px;
+  --rsm:    8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  font-family:'Ubuntu',sans-serif;
+  background:var(--off);
+  color:var(--text);
+  min-height:100vh;
+  background-image:
+    radial-gradient(ellipse at 0% 0%,rgba(111,151,62,0.07) 0%,transparent 55%),
+    radial-gradient(ellipse at 100% 100%,rgba(97,125,47,0.05) 0%,transparent 55%);
+}
+
+/* ── HEADER ── */
+.header{
+  background:var(--dk);
+  padding:0 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:68px;
+  box-shadow:0 2px 16px rgba(0,0,0,0.18);
+  position:sticky;top:0;z-index:100;
+}
+.header-logo{display:flex;align-items:center;gap:14px}
+.header-icon{
+  width:38px;height:38px;
+  background:rgba(255,255,255,0.13);
+  border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;
+}
+.header-title{
+  font-family:'Belleza',serif;
+  font-size:20px;color:white;letter-spacing:0.02em;
+}
+.header-sub{
+  font-size:11px;color:rgba(255,255,255,0.55);
+  font-weight:300;letter-spacing:0.08em;text-transform:uppercase;
+  font-style:italic;
+}
+.header-badge{
+  background:rgba(255,255,255,0.1);
+  border:1px solid rgba(255,255,255,0.2);
+  color:rgba(255,255,255,0.7);
+  font-size:11px;padding:4px 14px;border-radius:20px;
+  font-family:'DM Mono',monospace;
+}
+
+/* ── MAIN ── */
+.main{max-width:980px;margin:0 auto;padding:36px 24px 80px}
+
+/* ── STEPS ── */
+.steps{
+  display:flex;align-items:center;
+  background:white;border-radius:var(--radius);
+  padding:18px 28px;box-shadow:var(--shadow);
+  border:1px solid var(--g2);margin-bottom:32px;
+}
+.step{display:flex;align-items:center;gap:10px;flex:1}
+.step-num{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--g2);color:var(--g4);
+  font-size:12px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.3s;flex-shrink:0;
+}
+.step.active .step-num{background:var(--dk);color:white}
+.step.done   .step-num{background:var(--md);color:white}
+.step-label{font-size:12px;font-weight:500;color:var(--g3);transition:color 0.3s;line-height:1.3}
+.step.active .step-label{color:var(--dk)}
+.step.done   .step-label{color:var(--md)}
+.step-arrow{font-size:13px;color:var(--g2);margin:0 6px;flex-shrink:0}
+
+/* ── CARD ── */
+.card{
+  background:white;border-radius:var(--radius);
+  box-shadow:var(--shadow);border:1px solid var(--g2);
+  margin-bottom:22px;overflow:hidden;
+}
+.card-header{
+  padding:18px 28px;border-bottom:1px solid var(--g1);
+  display:flex;align-items:center;gap:12px;
+}
+.card-icon{
+  width:38px;height:38px;background:var(--lt2);
+  border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:18px;flex-shrink:0;
+}
+.card-title{
+  font-family:'Belleza',serif;
+  font-size:17px;font-weight:400;color:var(--dk);
+}
+.card-sub{font-size:12px;color:var(--g4);margin-top:2px}
+.card-body{padding:22px 28px}
+
+/* ── PERIOD ROW ── */
+.period-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:16px;align-items:end}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{
+  font-size:11px;font-weight:700;
+  color:var(--g4);text-transform:uppercase;letter-spacing:0.07em;
+}
+.sel-wrap{position:relative}
+.sel-wrap::after{
+  content:'▾';position:absolute;right:12px;top:50%;
+  transform:translateY(-50%);font-size:11px;color:var(--g3);pointer-events:none;
+}
+.field select,.field input[type=text],.field input[type=number]{
+  padding:10px 14px;
+  border:1.5px solid var(--g2);border-radius:var(--rsm);
+  font-family:'Ubuntu',sans-serif;font-size:14px;color:var(--text);
+  background:white;transition:border-color 0.2s,box-shadow 0.2s;
+  appearance:none;width:100%;
+}
+.field select:focus,.field input:focus{
+  outline:none;border-color:var(--md);
+  box-shadow:0 0 0 3px rgba(111,151,62,0.12);
+}
+
+.first-month-toggle{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+  background:var(--ambbg);border:1.5px solid #FCD34D;
+  border-radius:var(--rsm);cursor:pointer;
+}
+.first-month-toggle input{cursor:pointer;accent-color:var(--amber)}
+.toggle-label{font-size:12px;color:var(--amber);font-weight:500;line-height:1.3}
+
+.opening-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+  margin-top:14px;display:none;
+}
+.opening-grid.visible{display:grid}
+
+/* ── UPLOAD GRID ── */
+.upload-section-label{
+  font-size:11px;font-weight:700;color:var(--g4);
+  text-transform:uppercase;letter-spacing:0.07em;
+  margin:0 0 10px;
+}
+.upload-divider{
+  margin:16px 0 14px;
+  border-top:1px dashed var(--g2);
+  display:flex;align-items:center;gap:10px;
+}
+.upload-divider span{
+  font-size:11px;font-weight:600;color:var(--g4);
+  text-transform:uppercase;letter-spacing:0.07em;
+  background:white;padding:0 10px;white-space:nowrap;
+}
+
+.upload-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.upload-zone{
+  border:2px dashed var(--g2);border-radius:var(--rsm);
+  padding:16px 12px;text-align:center;
+  cursor:pointer;transition:all 0.22s;position:relative;
+  background:var(--g1);min-height:95px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--md);background:var(--lt2)}
+.upload-zone.uploaded{border-color:var(--md);background:#EAF2E0;border-style:solid}
+.upload-zone.err{border-color:var(--red);background:var(--redbg);border-style:solid}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.uz-icon{font-size:20px;margin-bottom:5px}
+.uz-name{font-size:12px;font-weight:600;color:var(--g5);margin-bottom:2px;line-height:1.3}
+.uz-hint{font-size:10px;color:var(--g3)}
+.uz-file{font-size:10px;color:var(--md);font-weight:500;font-family:'DM Mono',monospace;margin-top:3px;word-break:break-all}
+.uz-check{position:absolute;top:6px;left:8px;font-size:14px;display:none}
+.upload-zone.uploaded .uz-check{display:block}
+.uz-remove{
+  position:absolute;top:5px;right:7px;
+  font-size:14px;color:var(--g3);background:none;border:none;
+  cursor:pointer;z-index:2;display:none;padding:2px;
+}
+.upload-zone.uploaded .uz-remove{display:block}
+
+.progress-wrap{
+  margin-top:14px;display:flex;align-items:center;gap:10px;
+}
+.progress-track{flex:1;height:5px;background:var(--g2);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:var(--md);border-radius:3px;transition:width 0.4s;width:0%}
+.progress-label{font-size:12px;color:var(--g4);white-space:nowrap;font-family:'DM Mono',monospace}
+
+/* ── INFO BOX ── */
+.info-box{
+  background:var(--lt2);border:1px solid rgba(111,151,62,0.25);
+  border-left:3px solid var(--md);
+  border-radius:var(--rsm);padding:12px 16px;
+  font-size:12px;color:var(--dk);margin-bottom:14px;
+  display:flex;gap:8px;align-items:flex-start;
+  line-height:1.5;
+}
+
+/* ── GENERATE ── */
+.generate-wrap{text-align:center;padding:28px 28px 24px}
+.btn-gen{
+  display:inline-flex;align-items:center;justify-content:center;gap:12px;
+  padding:17px 52px;
+  background:var(--dk);color:white;border:none;border-radius:50px;
+  font-family:'Ubuntu',sans-serif;font-size:16px;font-weight:700;
+  cursor:pointer;transition:all 0.28s;
+  box-shadow:0 4px 20px rgba(97,125,47,0.30);
+  min-width:280px;letter-spacing:0.01em;
+}
+.btn-gen:hover:not(:disabled){
+  background:var(--md);
+  box-shadow:0 6px 28px rgba(97,125,47,0.40);
+  transform:translateY(-1px);
+}
+.btn-gen:disabled{
+  background:var(--g2);color:var(--g3);
+  cursor:not-allowed;box-shadow:none;transform:none;
+}
+.gen-hint{margin-top:11px;font-size:12px;color:var(--g3)}
+
+/* ── PROGRESS OVERLAY ── */
+.progress-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(255,255,255,0.93);backdrop-filter:blur(6px);
+  z-index:200;flex-direction:column;
+  align-items:center;justify-content:center;gap:20px;
+}
+.progress-overlay.on{display:flex}
+.spin{
+  width:56px;height:56px;
+  border:4px solid var(--g2);border-top-color:var(--dk);
+  border-radius:50%;animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ov-title{font-family:'Belleza',serif;font-size:22px;color:var(--dk)}
+.ov-step{font-size:13px;color:var(--g4);font-family:'DM Mono',monospace;min-height:18px}
+.ov-bar-wrap{width:300px;height:6px;background:var(--g2);border-radius:3px;overflow:hidden}
+.ov-bar{height:100%;background:var(--md);border-radius:3px;transition:width 0.4s ease;width:0%}
+
+/* ── SUCCESS ── */
+.success-panel{
+  display:none;
+  background:#EAF2E0;border:2px solid var(--lt);
+  border-radius:var(--radius);padding:28px 28px 24px;
+  text-align:center;margin-bottom:22px;
+}
+.success-panel.on{display:block}
+.suc-icon{font-size:44px;margin-bottom:10px}
+.suc-title{font-family:'Belleza',serif;font-size:22px;color:var(--dk);margin-bottom:5px}
+.suc-sub{font-size:14px;color:#3D5A1E;margin-bottom:18px}
+.btn-dl{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:13px 32px;background:var(--dk);color:white;
+  border:none;border-radius:50px;
+  font-family:'Ubuntu',sans-serif;font-size:15px;font-weight:700;
+  cursor:pointer;transition:all 0.2s;
+  box-shadow:0 4px 14px rgba(97,125,47,0.3);margin:0 5px 8px;
+}
+.btn-dl:hover{background:var(--md);transform:translateY(-1px)}
+.btn-reset{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 26px;background:transparent;
+  color:var(--dk);border:2px solid var(--lt);border-radius:50px;
+  font-family:'Ubuntu',sans-serif;font-size:14px;font-weight:500;
+  cursor:pointer;transition:all 0.2s;margin:0 5px 8px;
+}
+.btn-reset:hover{background:rgba(97,125,47,0.07)}
+
+.kpi-row{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;
+}
+.kpi-box{
+  background:rgba(255,255,255,0.7);
+  border:1px solid var(--lt);border-radius:var(--rsm);
+  padding:12px 8px;text-align:center;
+}
+.kpi-lbl{font-size:10px;font-weight:700;color:var(--g4);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px}
+.kpi-val{font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--dk)}
+.kpi-val.neg{color:var(--red)}
+
+/* ── ERROR ── */
+.err-banner{
+  display:none;align-items:flex-start;gap:10px;
+  background:var(--redbg);border:1.5px solid #FCA5A5;
+  border-radius:var(--rsm);padding:12px 16px;
+  font-size:13px;color:var(--red);margin-bottom:14px;
+}
+.err-banner.on{display:flex}
+
+/* ── FOOTER ── */
+.footer{
+  text-align:center;padding:20px 24px;
+  font-size:11px;color:var(--g3);
+  border-top:1px solid var(--g2);margin-top:32px;
+  font-style:italic;
+}
+
+@media(max-width:700px){
+  .main{padding:18px 14px 60px}
+  .period-row{grid-template-columns:1fr 1fr}
+  .upload-grid{grid-template-columns:1fr 1fr}
+  .kpi-row{grid-template-columns:1fr 1fr}
+  .header{padding:0 18px}
+  .header-badge,.header-sub{display:none}
+  .steps{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-logo">
+    <div class="header-icon">🌿</div>
+    <div>
+      <div class="header-title">Summerplace Game Reserve</div>
+      <div class="header-sub">F&B Report Generator &nbsp;·&nbsp; <em>Find Your Flow In Nature</em></div>
+    </div>
+  </div>
+  <div class="header-badge">Venue #10277</div>
+</header>
+
+<!-- PROGRESS OVERLAY -->
+<div class="progress-overlay" id="progressOverlay">
+  <div class="spin"></div>
+  <div class="ov-title">Generating Report…</div>
+  <div class="ov-step" id="ovStep">Parsing CSV files…</div>
+  <div class="ov-bar-wrap"><div class="ov-bar" id="ovBar"></div></div>
+</div>
+
+<main class="main">
+
+  <!-- STEPS -->
+  <div class="steps">
+    <div class="step active" id="s1"><div class="step-num">1</div><div class="step-label">Select Period</div></div>
+    <div class="step-arrow">→</div>
+    <div class="step" id="s2"><div class="step-num">2</div><div class="step-label">Upload 9 SEMPa Reports</div></div>
+    <div class="step-arrow">→</div>
+    <div class="step" id="s3"><div class="step-num">3</div><div class="step-label">Generate Report</div></div>
+    <div class="step-arrow">→</div>
+    <div class="step" id="s4"><div class="step-num">4</div><div class="step-label">Download Excel</div></div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="success-panel" id="successPanel">
+    <div class="suc-icon">✅</div>
+    <div class="suc-title">Report Ready!</div>
+    <div class="suc-sub" id="sucSub">Your F&B Cost of Sales report has been generated.</div>
+    <div>
+      <button class="btn-dl" onclick="downloadExcel()">⬇&nbsp; Download Excel Report</button>
+      <button class="btn-reset" onclick="resetApp()">↺&nbsp; Generate Another</button>
+    </div>
+    <div class="kpi-row" id="kpiRow"></div>
+  </div>
+
+  <!-- STEP 1: PERIOD -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">📅</div>
+      <div>
+        <div class="card-title">Step 1 — Select Reporting Period</div>
+        <div class="card-sub">Choose the month, enter your name, and set opening stock.</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="period-row">
+        <div class="field">
+          <label>Month</label>
+          <div class="sel-wrap">
+            <select id="selMonth" onchange="inputChanged()">
+              <option value="1">January</option><option value="2">February</option>
+              <option value="3" selected>March</option><option value="4">April</option>
+              <option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option>
+              <option value="9">September</option><option value="10">October</option>
+              <option value="11">November</option><option value="12">December</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Year</label>
+          <div class="sel-wrap">
+            <select id="selYear" onchange="inputChanged()">
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Prepared By</label>
+          <input type="text" id="prepBy" onchange="inputChanged()" value="Zoro (F&B Manager)" placeholder="Your name">
+        </div>
+        <div class="field">
+          <label>Opening Stock</label>
+          <label class="first-month-toggle">
+            <input type="checkbox" id="chkFirst" checked onchange="toggleFirst()">
+            <span class="toggle-label">First month on SEMPa<br>(Opening = R 0)</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="opening-grid" id="openGrid">
+        <div class="field"><label>Food Opening (R)</label><input type="number" id="oFood" onchange="inputChanged()" placeholder="0.00" step="0.01"></div>
+        <div class="field"><label>Bar Coldrink Opening (R)</label><input type="number" id="oBarCD" onchange="inputChanged()" placeholder="0.00" step="0.01"></div>
+        <div class="field"><label>Bar Liquor Opening (R)</label><input type="number" id="oBarLQ" onchange="inputChanged()" placeholder="0.00" step="0.01"></div>
+        <div class="field"><label>Shop Opening (R)</label><input type="number" id="oShop" onchange="inputChanged()" placeholder="0.00" step="0.01"></div>
+      </div>
+      <p style="font-size:11px;color:var(--g3);margin-top:8px;display:none" id="openHint">
+        💡 Enter closing stock values from last month's report (📋 COS Report tab → TOTAL rows → CLOSING STOCK column)
+      </p>
+    </div>
+  </div>
+
+  <!-- STEP 2: UPLOADS -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">📂</div>
+      <div>
+        <div class="card-title">Step 2 — Upload all 9 SEMPa Reports</div>
+        <div class="card-sub">Export each report from SEMPa → Reports → Stock for the same date range. Drag & drop or click each box.</div>
+      </div>
+    </div>
+    <div class="card-body">
+
+      <div class="info-box">
+        ℹ️ &nbsp;All 9 reports must use the <strong>same date range</strong> as the period selected above. Export as CSV from SEMPa.
+        The <strong>Stock Variance Summary</strong> needs to be exported separately for each of the 5 storage areas.
+      </div>
+
+      <!-- INCOME + STOCK TRANSACTIONS -->
+      <div class="upload-section-label">Income & Stock Activity</div>
+      <div class="upload-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="upload-zone" id="z-income" ondrop="drop(event,'income')" ondragover="dov(event)" ondragleave="dlv(event)">
+          <div class="uz-check">✅</div>
+          <button class="uz-remove" onclick="rem('income',event)">✕</button>
+          <input type="file" accept=".csv" onchange="sel(event,'income')">
+          <div class="uz-icon">💰</div>
+          <div class="uz-name">Income Analysis</div>
+          <div class="uz-hint">All sales by product & category</div>
+          <div class="uz-file" id="f-income"></div>
+        </div>
+        <div class="upload-zone" id="z-goods" ondrop="drop(event,'goods')" ondragover="dov(event)" ondragleave="dlv(event)">
+          <div class="uz-check">✅</div>
+          <button class="uz-remove" onclick="rem('goods',event)">✕</button>
+          <input type="file" accept=".csv" onchange="sel(event,'goods')">
+          <div class="uz-icon">🛒</div>
+          <div class="uz-name">Goods Received</div>
+          <div class="uz-hint">All deliveries & purchases</div>
+          <div class="uz-file" id="f-goods"></div>
+        </div>
+        <div class="upload-zone" id="z-issued" ondrop="drop(event,'issued')" ondragover="dov(event)" ondragleave="dlv(event)">
+          <div class="uz-check">✅</div>
+          <button class="uz-remove" onclick="rem('issued',event)">✕</button>
+          <input type="file" accept=".csv" onchange="sel(event,'issued')">
+          <div class="uz-icon">📤</div>
+          <div class="uz-name">Issued Stock</div>
+          <div class="uz-hint">Staff meals, events, write-offs</div>
+          <div class="uz-file" id="f-issued"></div>
+        </div>
+      </div>
+
+      <!-- TRANSFER -->
+      <div class="upload-divider"><span>Stock Movements</span></div>
+      <div class="upload-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="upload-zone" id="z-transfer" ondrop="drop(event,'transfer')" ondragover="dov(event)" ondragleave="dlv(event)">
+          <div class="uz-check">✅</div>
+          <button class="uz-remove" onclick="rem('transfer',event)">✕</button>
+          <input type="file" accept=".csv" onchange="sel(event,'transfer')">
+          <div class="uz-icon">🔄</div>
+          <div class="uz-name">Stock Transfer</div>
+          <div class="uz-hint">Transfers between storage areas</div>
+          <div class="uz-file" id="f-transfer"></div>
+        </div>
+        <div style="grid-column:span 2"></div>
+      </div>
+
+      <!-- VARIANCE FILES -->
+      <div class="upload-divider"><span>Stock Variance Summary — one per storage area</span></div>
+      <div class="upload-grid">
+        <div class="upload-zone" id="z-vMain" ondrop="drop(event,'vMain')" ondragover="dov(event)" ondragleave="dlv(event)">
+          <div class="uz-check">✅</div>
+          <button class="uz-remove" onclick="rem('vMain',event)">✕</button>
+          <input type="file" accept=".csv" onchange="sel(event,'vMain')">
+          <div class="uz-icon">📦</div>
+          <div class="uz-name">Variance — Main Storage</div>
+          <div class="uz-hint">Filter: Main Storage</div>
+          <div class="uz-file" id="f-vMain"></div>
+        </div>
+        <div class="upload-zone" id="z-vKitchen" ondrop="drop(event,'vKitchen')" ondragover="dov(event)" ondragleave="dlv(event)">
+          <div class="uz-check">✅</div>
+          <button class="uz-remove" onclick="rem('vKitchen',event)">✕</button>
+          <input type="file" accept=".csv" onchange="sel(event,'vKitchen')">
+          <div class="uz-icon">🍳</div>
+          <div class="uz-name">Variance — Kitchen Front</div>
+          <div class="uz-hint">Filter: Kitchen Front</div>
+          <div class="uz-file" id="f-vKitchen"></div>
+        </div>
+        <div class="upload-zone" id="z-vBarMain" ondrop="drop(event,'vBarMain')" ondragover="dov(event)" ondragleave="dlv(event)">
+          <div class="uz-check">✅</div>
+          <button class="uz-remove" onclick="rem('vBarMain',event)">✕</button>
+          <input type="file" accept=".csv" onchange="sel(event,'vBarMain')">
+          <div class="uz-icon">🧃</div>
+          <div class="uz-name">Variance — Bar Main Storage</div>
+          <div class="uz-hint">Filter: Bar Main Storage</div>
+          <div class="uz-file" id="f-vBarMain"></div>
+        </div>
+        <div class="upload-zone" id="z-vBarFront" ondrop="drop(event,'vBarFront')" ondragover="dov(event)" ondragleave="dlv(event)">
+          <div class="uz-check">✅</div>
+          <button class="uz-remove" onclick="rem('vBarFront',event)">✕</button>
+          <input type="file" accept=".csv" onchange="sel(event,'vBarFront')">
+          <div class="uz-icon">🍷</div>
+          <div class="uz-name">Variance — Bar Front</div>
+          <div class="uz-hint">Filter: Bar Front (Liquor)</div>
+          <div class="uz-file" id="f-vBarFront"></div>
+        </div>
+        <div class="upload-zone" id="z-vShop" ondrop="drop(event,'vShop')" ondragover="dov(event)" ondragleave="dlv(event)">
+          <div class="uz-check">✅</div>
+          <button class="uz-remove" onclick="rem('vShop',event)">✕</button>
+          <input type="file" accept=".csv" onchange="sel(event,'vShop')">
+          <div class="uz-icon">🛍</div>
+          <div class="uz-name">Variance — Shop</div>
+          <div class="uz-hint">Filter: Summerplace Shop</div>
+          <div class="uz-file" id="f-vShop"></div>
+        </div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-track"><div class="progress-fill" id="upFill"></div></div>
+        <span class="progress-label" id="upCount">0 / 9 files</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: GENERATE -->
+  <div class="card">
+    <div class="generate-wrap">
+      <div class="err-banner" id="errBanner"><span>⚠️</span><span id="errTxt"></span></div>
+      <button class="btn-gen" id="btnGen" onclick="generate()" disabled>
+        <span style="font-size:20px">⚡</span> Generate F&B Report
+      </button>
+      <div class="gen-hint" id="genHint">Upload all 9 CSV files to enable report generation</div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  Summerplace Game Reserve &nbsp;·&nbsp; MOVE | RELAX | INDULGE | CONNECT &nbsp;·&nbsp; <em>Find Your Flow In Nature</em>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════
+// BRAND COLOURS (for Excel output)
+// ═══════════════════════════════════════════════════
+const XL={
+  // Headers: single dark green only
+  DK:'617D2F', MD:'617D2F',
+  // Data rows: white / very light grey alternating — no green tint
+  WH:'FFFFFF', LT2:'F7F7F7',
+  // Totals: light grey
+  TOTBG:'EEEEEE', SUBBG:'F2F2F2',
+  // Alerts only
+  AMBER:'FFC000', AMBBG:'FFF2CC',
+  RED:'C00000', REDBG:'FFF0EE',
+  // Text
+  BK:'000000', HDRTXT:'FFFFFF', SLT:'4A5464',
+  // Legacy aliases (keep references working)
+  LT:'F7F7F7', ASH:'888888', PRO:'888888', BLKBG:'3D3D3D'
+};
+
+// Number formats
+const R0='\"R \"#,##0;[Red]-\"R \"#,##0;\"-\"';
+const R2='\"R \"#,##0.00;[Red]-\"R \"#,##0.00;\"-\"';
+const PCT='0.0%;[Red]-0.0%;\"-\"';
+const N0='#,##0;[Red]-#,##0;\"-\"';
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+const REQUIRED = ['income','goods','issued','vMain','vKitchen','vBarMain','vBarFront'];
+const ALL_KEYS  = ['income','goods','issued','transfer','vMain','vKitchen','vBarMain','vBarFront','vShop'];
+const files = {};
+ALL_KEYS.forEach(k => files[k] = null);
+let excelBlob = null;
+
+// ═══════════════════════════════════════════════════
+// UI
+// ═══════════════════════════════════════════════════
+function toggleFirst(){
+  const on = document.getElementById('chkFirst').checked;
+  document.getElementById('openGrid').classList.toggle('visible', !on);
+  document.getElementById('openHint').style.display = on ? 'none' : 'block';
+  inputChanged();
+}
+function setSteps(active){
+  ['s1','s2','s3','s4'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    el.className='step'+(i+1<active?' done':i+1===active?' active':'');
+  });
+}
+function setProgress(pct, msg){
+  document.getElementById('ovBar').style.width=pct+'%';
+  if(msg) document.getElementById('ovStep').textContent=msg;
+}
+function showOverlay(on){ document.getElementById('progressOverlay').classList.toggle('on',on); }
+function showErr(msg){ const b=document.getElementById('errBanner'); document.getElementById('errTxt').textContent=msg; b.classList.toggle('on',!!msg); }
+
+function updateBtn(){
+  const ok = REQUIRED.every(k=>files[k]);
+  const btn = document.getElementById('btnGen');
+  btn.disabled = !ok;
+  const hint = document.getElementById('genHint');
+  if(!ok){
+    const missing = REQUIRED.filter(k=>!files[k]).length;
+    hint.textContent = `Upload ${missing} more required file${missing>1?'s':''} to enable generation`;
+  } else {
+    hint.textContent = 'All required files loaded — click to generate your report';
+  }
+  if(ok) setSteps(3); else setSteps(2);
+}
+
+function updateCount(){
+  const n = ALL_KEYS.filter(k=>files[k]).length;
+  document.getElementById('upFill').style.width=(n/ALL_KEYS.length*100)+'%';
+  document.getElementById('upCount').textContent=`${n} / 9 files`;
+}
+
+// ═══════════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════════
+function dov(e){ e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function dlv(e){ e.currentTarget.classList.remove('drag-over'); }
+function drop(e,k){ e.preventDefault(); e.currentTarget.classList.remove('drag-over'); if(e.dataTransfer.files[0]) load(e.dataTransfer.files[0],k); }
+function sel(e,k){ if(e.target.files[0]) load(e.target.files[0],k); }
+function rem(k,e){ e.preventDefault(); e.stopPropagation(); files[k]=null; const z=document.getElementById('z-'+k); z.classList.remove('uploaded','err'); document.getElementById('f-'+k).textContent=''; updateCount(); updateBtn(); }
+
+function load(file, k){
+  if(!file.name.toLowerCase().endsWith('.csv')){
+    const z=document.getElementById('z-'+k); z.classList.add('err');
+    document.getElementById('f-'+k).textContent='Must be a .csv file';
+    return;
+  }
+  const r=new FileReader();
+  r.onload=e=>{
+    files[k]={name:file.name, content:e.target.result};
+    const z=document.getElementById('z-'+k);
+    z.classList.add('uploaded'); z.classList.remove('err');
+    document.getElementById('f-'+k).textContent='✓ '+file.name;
+    updateCount(); updateBtn();
+  };
+  r.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════
+// CSV PARSERS
+// ═══════════════════════════════════════════════════
+const OWNER_KEYS = ['simone','dave','cost account'];
+const rnd = v => Math.round(v*100)/100;
+
+function $R(v){
+  if(!v) return 0;
+  return parseFloat(String(v).replace(/R/g,'').replace(/\s/g,'').replace(/,/g,'.').replace('--','-'))||0;
+}
+
+function parseIncome(csv){
+  const lines=csv.split('\n');
+  const hi=lines.findIndex(l=>l.includes('Product;Category'));
+  if(hi<0) return {food:0,bar:0,shop:0,accom:0,activities:0,total:0,byCode:{}};
+  const r={food:0,bar:0,shop:0,accom:0,activities:0,total:0,byCode:{}};
+  for(const line of lines.slice(hi+1)){
+    const p=line.split(';').map(s=>s.trim());
+    if(p.length<13||!p[0]||p[0].startsWith(';;')) continue;
+    if(p[0].startsWith('Total')) continue;
+    const cat=p[1]; const excl=$R(p[11]);
+    if(!excl) continue;
+    if(cat==='Food Menu')       r.food     +=excl;
+    else if(cat==='Bar Sales')  r.bar      +=excl;
+    else if(cat==='Shop')       r.shop     +=excl;
+    else if(cat==='Accommodation') r.accom +=excl;
+    else if(cat==='Activities') r.activities+=excl;
+    r.total+=excl;
+    const code=p[0]; r.byCode[code]=(r.byCode[code]||0)+excl;
+  }
+  Object.keys(r).forEach(k=>{ if(typeof r[k]==='number') r[k]=rnd(r[k]); });
+  return r;
+}
+
+function parseGoods(csv){
+  const lines=csv.split('\n');
+  const r={byArea:{},total:0,suppliers:{}};
+  for(const line of lines){
+    const p=line.split(';').map(s=>s.trim());
+    if(p.length<12||!p[0]||!p[0].includes('/')) continue;
+    const area=p[9]; const sup=p[8]; const tot=$R(p[11]);
+    if(!area||!tot) continue;
+    r.byArea[area]=(r.byArea[area]||0)+tot;
+    r.total+=tot;
+    if(!r.suppliers[sup]) r.suppliers[sup]={total:0,invoices:0,area};
+    r.suppliers[sup].total+=tot; r.suppliers[sup].invoices++;
+  }
+  Object.keys(r.byArea).forEach(k=>r.byArea[k]=rnd(r.byArea[k]));
+  r.total=rnd(r.total);
+  Object.values(r.suppliers).forEach(s=>s.total=rnd(s.total));
+  return r;
+}
+
+function parseIssued(csv){
+  const lines=csv.split('\n');
+  const hi=lines.findIndex(l=>l.includes('Receiving User'));
+  if(hi<0) return {byReason:{},total:0,ownerTotal:0};
+  const r={byReason:{},total:0,ownerTotal:0};
+  for(const line of lines.slice(hi+1)){
+    const p=line.split(';').map(s=>s.trim());
+    if(p.length<9||!p[0]||p[0].startsWith(';;')) continue;
+    const reason=p[8]; const cost=$R(p[7]);
+    if(OWNER_KEYS.some(k=>reason.toLowerCase().includes(k))){ r.ownerTotal+=cost; continue; }
+    r.byReason[reason]=(r.byReason[reason]||0)+cost;
+    r.total+=cost;
+  }
+  r.total=rnd(r.total);
+  r.ownerTotal=rnd(r.ownerTotal);
+  Object.keys(r.byReason).forEach(k=>r.byReason[k]=rnd(r.byReason[k]));
+  return r;
+}
+
+function parseVariance(csv){
+  const lines=csv.split('\n');
+  const areaLine=lines.find(l=>l.includes('Storage Area:'));
+  const area=areaLine?areaLine.split(':')[1].replace(/;.*/,'').trim():'Unknown';
+  let onHand=0,recorded=0,variance=0;
+  const byCategory={};
+  let inData=false;
+  for(const line of lines){
+    const p=line.split(';').map(s=>s.trim());
+    if(line.includes('On Hand Cost')){inData=true;continue}
+    if(line.includes('Totals:')&&inData){
+      onHand=$R(p[1]); recorded=$R(p[2]); variance=$R(p[3]); break;
+    }
+    if(inData&&p[0]){
+      const oh=$R(p[1]); const rec=$R(p[2]); const vr=$R(p[3]);
+      if(oh||rec||vr) byCategory[p[0]]={onHand:oh,recorded:rec,variance:vr};
+    }
+  }
+  return {area,onHand:rnd(onHand),recorded:rnd(recorded),variance:rnd(variance),byCategory};
+}
+
+function parseTransfer(csv){
+  const lines=csv.split('\n');
+  const hi=lines.findIndex(l=>l.includes('Transfer Date'));
+  if(hi<0) return {in:{},out:{}};
+  const r={in:{},out:{}};
+  for(const line of lines.slice(hi+1)){
+    const p=line.split(';').map(s=>s.trim());
+    if(p.length<9||!p[0]||!p[0].includes('/')) continue;
+    const from=p[4],to=p[5],cost=$R(p[8]);
+    r.out[from]=(r.out[from]||0)+cost;
+    r.in[to]=(r.in[to]||0)+cost;
+  }
+  Object.keys(r.in).forEach(k=>r.in[k]=rnd(r.in[k]));
+  Object.keys(r.out).forEach(k=>r.out[k]=rnd(r.out[k]));
+  return r;
+}
+
+// ═══════════════════════════════════════════════════
+// EXCEL BUILDER HELPERS
+// ═══════════════════════════════════════════════════
+function mkCell(val,bold,fg,bg,halign,fmt,wrap){
+  const t=typeof val==='number'?'n':(val==null?'z':'s');
+  return{t,v:val??'',
+    ...(fmt?{z:fmt}:{}),
+    s:{
+      font:{name:'Calibri',bold:!!bold,color:{argb:'FF'+(fg||XL.BK)},sz:10},
+      fill:bg?{type:'pattern',pattern:'solid',fgColor:{argb:'FF'+bg}}:undefined,
+      alignment:{horizontal:halign||'left',vertical:'middle',wrapText:!!wrap},
+      border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}
+    }
+  };
+}
+
+function setC(ws,r,c,cell){
+  const addr=XLSX.utils.encode_cell({r:r-1,c:c-1});
+  ws[addr]=cell;
+}
+
+function fillRow(ws,r,bg,c1,c2){
+  for(let c=c1;c<=c2;c++){
+    const addr=XLSX.utils.encode_cell({r:r-1,c:c-1});
+    if(!ws[addr]) ws[addr]={t:'z',v:''};
+    ws[addr].s={...(ws[addr].s||{}),fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF'+bg}}};
+  }
+}
+
+function merge(ws,r1,c1,r2,c2){
+  if(!ws['!merges']) ws['!merges']=[];
+  ws['!merges'].push({s:{r:r1-1,c:c1-1},e:{r:r2-1,c:c2-1}});
+}
+
+function rowH(ws,r,h){ if(!ws['!rows']) ws['!rows']=[]; ws['!rows'][r-1]={hpt:h}; }
+
+function colW(ws,widths){ ws['!cols']=widths.map(w=>({wpx:Math.round(w*7.2)})); }
+
+function titleBlock(ws,t1,t2,t3,cols){
+  // Row 1 spacer
+  rowH(ws,1,5);
+  // Row 2 main title
+  merge(ws,2,2,2,cols);
+  for(let c=1;c<=cols+1;c++) setC(ws,2,c,mkCell(c===2?'  '+t1:'',true,XL.HDRTXT,XL.DK,'left'));
+  rowH(ws,2,28);
+  // Row 3 subtitle
+  merge(ws,3,2,3,cols);
+  for(let c=1;c<=cols+1;c++) setC(ws,3,c,mkCell(c===2?'  '+t2:'',true,XL.HDRTXT,XL.MD,'left'));
+  rowH(ws,3,20);
+  // Row 4 sub-line
+  merge(ws,4,2,4,cols);
+  for(let c=1;c<=cols+1;c++) setC(ws,4,c,mkCell(c===2?'  '+t3:'',false,XL.HDRTXT,'4A6B20','left',null,false));
+  rowH(ws,4,13);
+  rowH(ws,5,5);
+}
+
+function secHdr(ws,r,label,bg,c1,c2){
+  merge(ws,r,c1,r,c2);
+  for(let c=c1-1;c<=c2+1;c++) setC(ws,r,c,mkCell('',false,XL.HDRTXT,bg,'left'));
+  setC(ws,r,c1,mkCell('  '+label,true,XL.HDRTXT,bg,'left'));
+  rowH(ws,r,18);
+}
+
+function hdrRow(ws,r,cols_arr,bg){
+  bg=bg||XL.DK;
+  cols_arr.forEach(([lbl,c])=>{
+    setC(ws,r,c,mkCell(lbl,true,XL.HDRTXT,bg,'center',null,true));
+  });
+  rowH(ws,r,28);
+}
+
+function dataRow(ws,r,cells_arr,bg,bold){
+  bg=bg||(r%2===0?XL.LT2:XL.WH);
+  cells_arr.forEach(([c,v,fmt,h])=>{
+    const neg=typeof v==='number'&&v<0;
+    const fg=neg&&fmt&&(fmt.includes('0%')||fmt==='R0'||fmt===R0||fmt===R2)?XL.RED:XL.BK;
+    setC(ws,r,c,mkCell(typeof v==='number'?rnd(v):v,bold,fg,bg,h||'left',fmt));
+  });
+  rowH(ws,r,17);
+}
+
+function totalRow(ws,r,cells_arr,bg){
+  bg=bg||XL.TOTBG;
+  cells_arr.forEach(([c,v,fmt,h])=>{
+    const neg=typeof v==='number'&&v<0;
+    const fg=neg&&fmt?XL.RED:XL.BK;
+    const cell=mkCell(typeof v==='number'?rnd(v):v,true,fg,bg,h||'left',fmt);
+    cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}};
+    setC(ws,r,c,cell);
+  });
+  rowH(ws,r,20);
+}
+
+function noteRow(ws,r,text,c1,c2,bg,fg){
+  merge(ws,r,c1,r,c2);
+  for(let c=c1;c<=c2;c++) setC(ws,r,c,mkCell('',false,fg||'7F3F00',bg||XL.AMBBG,'left',null,true));
+  setC(ws,r,c1,mkCell(text,false,fg||'7F3F00',bg||XL.AMBBG,'left',null,true));
+  rowH(ws,r,22);
+}
+
+function setRef(ws,maxR,maxC){
+  ws['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:maxR,c:maxC}});
+}
+
+// ═══════════════════════════════════════════════════
+// SHEET BUILDERS
+// ═══════════════════════════════════════════════════
+function buildDashboard(wb,D,period,prepBy){
+  const ws={};ws['!merges']=[];ws['!rows']=[];
+  colW(ws,[2,28,13,13,13,13,13,13,13,2]);
+  const cols=9;
+  titleBlock(ws,
+    'SUMMERPLACE GAME RESERVE',
+    'F&B COST OF SALES DASHBOARD  |  '+period,
+    'Prepared by: '+prepBy+'  ·  Period: '+period+'  ·  Opening: '+(D.firstMonth?'R 0 (First Month on SEMPa)':'Previous month closing stock'),
+    cols);
+  let r=6;
+
+  // REVENUE KPIs
+  secHdr(ws,r,'REVENUE OVERVIEW',XL.DK,2,cols); r++;
+  const revL=['FOOD REVENUE','BAR REVENUE','SHOP REVENUE','F&B COMBINED','TOTAL ALL'];
+  const revV=[D.foodInc,D.barInc,D.shopInc,D.fbInc,D.totalInc];
+  const revBG=[XL.MD,XL.MD,XL.MD,XL.DK,XL.BLKBG];
+  revL.forEach((l,i)=>{setC(ws,r,2+i,mkCell(l,true,XL.HDRTXT,revBG[i],'center',null,true));rowH(ws,r,20);});
+  revV.forEach((v,i)=>{setC(ws,r+1,2+i,mkCell(rnd(v),true,XL.HDRTXT,revBG[i],'center',R0));rowH(ws,r+1,26);});
+  r+=2; rowH(ws,r,5); r++;
+
+  // GP KPIs
+  secHdr(ws,r,'GROSS PROFIT',XL.MD,2,cols); r++;
+  const gpL=['FOOD GP','FOOD GP%','BAR GP','BAR GP%','F&B GP%'];
+  const gpV=[D.foodGP,D.foodGPpct,D.barGP,D.barGPpct,D.fbGPpct];
+  const gpF=[R0,PCT,R0,PCT,PCT];
+  gpL.forEach((l,i)=>{setC(ws,r,2+i,mkCell(l,true,XL.HDRTXT,XL.MD,'center',null,true));rowH(ws,r,20);});
+  gpV.forEach((v,i)=>{setC(ws,r+1,2+i,mkCell(rnd(v),true,XL.HDRTXT,XL.MD,'center',gpF[i]));rowH(ws,r+1,26);});
+  r+=2;
+
+  if(D.firstMonth){
+    noteRow(ws,r,'⚠️  Opening Stock = R 0 (first month on SEMPa). GP% is inflated and COS% is negative — this is expected. True ratios from April.',2,cols,XL.AMBBG,'7F3F00');
+    r++;
+  }
+  rowH(ws,r,5); r++;
+
+  // VARIANCE RAG
+  secHdr(ws,r,'STOCK VARIANCE — RAG STATUS  (Negative = less stock than expected)',XL.DK,2,cols); r++;
+  hdrRow(ws,r,[['STORAGE AREA',2],['ACTUAL ON HAND (R)',3],['THEORETICAL (R)',4],['VARIANCE (R)',5],['VAR %',6],['STATUS',7],['PRIORITY ACTION',8]],XL.DK);
+  r++;
+  D.varianceRows.forEach(v=>{
+    const varPct=v.theo?rnd(v.var/v.theo):0;
+    const bg=v.var<-5000?XL.REDBG:(v.var<-1000?XL.AMBBG:XL.LT2);
+    const tc=v.var<-1000?XL.RED:XL.BK;
+    [[2,v.area,null,'left'],[3,v.actual,R0,'right'],[4,v.theo,R0,'right'],
+     [5,v.var,R0,'right'],[6,varPct,PCT,'right'],[7,v.status,null,'center'],[8,v.action,null,'left']]
+    .forEach(([c,val,fmt,h])=>setC(ws,r,c,mkCell(typeof val==='number'?rnd(val):val,c===2,c===5&&v.var<0?XL.RED:XL.BK,bg,h,fmt,c===8)));
+    rowH(ws,r,20); r++;
+  });
+  rowH(ws,r,5); r++;
+
+  // TOP PERFORMERS
+  secHdr(ws,r,'TOP REVENUE PERFORMERS',XL.DK,2,cols); r++;
+  [[2,'🍽 TOP 5 FOOD CATEGORIES'],[3,'REVENUE (excl VAT)'],[5,'🍷 TOP 5 BAR CATEGORIES'],[6,'REVENUE (excl VAT)']]
+  .forEach(([c,l])=>setC(ws,r,c,mkCell(l,true,XL.HDRTXT,XL.MD,'center',null,true)));
+  rowH(ws,r,22); r++;
+  D.top5food.forEach((m,i)=>{
+    const bg=i%2===0?XL.WH:XL.LT2;
+    setC(ws,r,2,mkCell(m.cat,false,XL.BK,bg,'left'));
+    setC(ws,r,3,mkCell(rnd(m.rev),false,XL.BK,bg,'right',R0));
+    if(D.top5bar[i]){
+      setC(ws,r,5,mkCell(D.top5bar[i].cat,false,XL.BK,bg,'left'));
+      setC(ws,r,6,mkCell(rnd(D.top5bar[i].rev),false,XL.BK,bg,'right',R0));
+    }
+    rowH(ws,r,17); r++;
+  });
+  rowH(ws,r,5); r++;
+
+  // NOTES
+  secHdr(ws,r,'ACTION ITEMS FOR GM & MD',XL.DK,2,cols); r++;
+  D.notes.forEach(n=>{
+    const bg=n.f==='🔴'?XL.REDBG:(n.f==='⚠️'?XL.AMBBG:XL.LT2);
+    merge(ws,r,3,r,cols);
+    setC(ws,r,2,mkCell(n.f+'  '+n.h,true,n.f==='🔴'?XL.RED:XL.DK,bg,'left'));
+    setC(ws,r,3,mkCell(n.d,false,'444444',bg,'left',null,true));
+    rowH(ws,r,28); r++;
+  });
+
+  rowH(ws,r,4); r++;
+  merge(ws,r,2,r,cols);
+  for(let c=1;c<=cols+1;c++) setC(ws,r,c,mkCell(c===2?'Summerplace Game Reserve  ·  MOVE | RELAX | INDULGE | CONNECT  ·  Find Your Flow In Nature':'',false,XL.HDRTXT,XL.DK,'center'));
+  rowH(ws,r,14);
+
+  setRef(ws,r+1,cols);
+  XLSX.utils.book_append_sheet(wb,ws,'📊 Dashboard');
+}
+
+function buildCOS(wb,D,period){
+  const ws={};ws['!merges']=[];ws['!rows']=[];
+  // 19 columns: margin | label | Open | Purch | XfrIn | XfrOut | Issue | Close | Income |
+  //             COS | COS% | BudCOS% | BudCOS(R) | COSDiff | VarAmt | Var% | WriteOffs | GP | GP%
+  colW(ws,[2,34,12,12,12,12,12,12,12,10,9,9,12,12,9,12,12,9,2]);
+  const cols=18;
+  titleBlock(ws,'SUMMERPLACE GAME RESERVE',
+    'F&B COST OF SALES JOURNAL  |  '+period,
+    'COS = Open+Purch+XfrIn−XfrOut−Issue−Close  |  Blue cells = input from SEMPa  |  Budget COS% = target, set with GM',
+    cols);
+  let r=6;
+
+  // First-month amber notice
+  if(D.firstMonth){
+    merge(ws,r,2,r,cols);
+    for(let c=1;c<=cols+1;c++) setC(ws,r,c,mkCell('',false,'7F3F00',XL.AMBBG,'left',null,true));
+    setC(ws,r,2,mkCell('⚠  FIRST MONTH ON SEMPA — Opening Stock = R 0 across all sections. COS figures will be negative (net stock build). Budget COS% targets to be agreed with GM — enter in blue cells only.',false,'7F3F00',XL.AMBBG,'left',null,true));
+    rowH(ws,r,28); r++; rowH(ws,r,5); r++;
+  }
+
+  // Column headers
+  const CH=[
+    ['',2],['OPENING\nSTOCK (R)',3],['PURCHASES\n(R)',4],['TRANSFER\nIN (R)',5],['TRANSFER\nOUT (R)',6],
+    ['ISSUE\nOUT (R)',7],['CLOSING\nSTOCK (R)',8],['INCOME\n(R)',9],['COS\nUSAGE (R)',10],
+    ['ACTUAL\nCOS%',11],['BUDGET\nCOS%',12],['BUDGET\nCOS (R)',13],['COS\nDIFF (R)',14],
+    ['VARIANCE\nAMT (R)',15],['VARIANCE\n%',16],['WRITE-OFFS\n(−ve)',17],['GROSS\nPROFIT (R)',18]
+  ];
+  hdrRow(ws,r,CH,XL.DK); rowH(ws,r,36); r++;
+
+  // Helper: write one journal data row
+  // varAmt from SEMPa; budPct = target (or null); writOff = negative number or null
+  function jRow(lbl,op,pu,xin,xout,iss,cl,inc,varAmt,budPct,woff,indent,italic){
+    const bg = r%2===0 ? XL.LT2 : XL.WH;
+    const cos = rnd((op||0)+(pu||0)+(xin||0)-(xout||0)-(iss||0)-(cl||0));
+    const cosPct = inc ? rnd(cos/inc) : null;
+    const budCosR = (inc && budPct!=null) ? rnd(inc*budPct) : null;
+    const cosDiff = (budCosR!=null) ? rnd(budCosR-cos) : null;
+    const varPct = (varAmt!=null && cl) ? rnd(varAmt/cl) : null;
+    const gp = inc ? rnd(inc-cos) : null;
+    const l = indent ? '  '+lbl : lbl;
+    [
+      [2,l,null,'left',false,italic?XL.SLT:XL.BK],
+      [3,op,R0,'right',false,'0070C0'],
+      [4,pu,R0,'right',false,'0070C0'],
+      [5,xin,R0,'right',false,'0070C0'],
+      [6,xout,R0,'right',false,'0070C0'],
+      [7,iss,R0,'right',false,'0070C0'],
+      [8,cl,R0,'right',false,'0070C0'],
+      [9,inc,R0,'right',false,'0070C0'],
+      [10,cos,R0,'right',false,cos<0?XL.RED:XL.BK],
+      [11,cosPct,PCT,'right',false,cosPct!=null&&cosPct<0?XL.RED:XL.BK],
+      [12,budPct,PCT,'right',false,'0070C0'],
+      [13,budCosR,R0,'right',false,XL.BK],
+      [14,cosDiff,R0,'right',false,XL.BK],
+      [15,varAmt,R0,'right',false,varAmt!=null&&varAmt<0?XL.RED:XL.BK],
+      [16,varPct,PCT,'right',false,varPct!=null&&varPct<0?XL.RED:XL.BK],
+      [17,woff,R0,'right',false,'0070C0'],
+      [18,gp,R0,'right',false,gp!=null&&gp<0?XL.RED:XL.BK],
+    ].forEach(([c,v,fmt,h,bold,fg])=>{
+      if(v===null||v===undefined){ setC(ws,r,c,mkCell('',false,XL.BK,bg,h)); return; }
+      setC(ws,r,c,mkCell(typeof v==='number'?rnd(v):v,bold,fg,bg,h,fmt));
+    });
+    rowH(ws,r,17); r++;
+    return {op:op||0,pu:pu||0,xin:xin||0,xout:xout||0,iss:iss||0,cl:cl||0,inc:inc||0,cos,gp:gp||0,varAmt:varAmt||0,woff:woff||0};
+  }
+
+  // Total row — accepts array of row result objects
+  function jTotal(lbl,rows,budPct,bg){
+    bg=bg||XL.TOTBG;
+    const T={op:0,pu:0,xin:0,xout:0,iss:0,cl:0,inc:0,cos:0,gp:0,varAmt:0};
+    rows.forEach(rv=>{ Object.keys(T).forEach(k=>T[k]=rnd((T[k]||0)+(rv[k]||0))); });
+    const cosPct=T.inc?rnd(T.cos/T.inc):null;
+    const budCosR=(T.inc&&budPct!=null)?rnd(T.inc*budPct):null;
+    const cosDiff=budCosR!=null?rnd(budCosR-T.cos):null;
+    const varPct=(T.cl)?rnd(T.varAmt/T.cl):null;
+    const gpPct=T.inc?rnd(T.gp/T.inc):null;
+    [
+      [2,lbl,null,'left',true,XL.BK],
+      [3,T.op,R0,'right',true,XL.BK],[4,T.pu,R0,'right',true,XL.BK],
+      [5,T.xin,R0,'right',true,XL.BK],[6,T.xout,R0,'right',true,XL.BK],
+      [7,T.iss,R0,'right',true,XL.BK],[8,T.cl,R0,'right',true,XL.BK],
+      [9,T.inc,R0,'right',true,XL.BK],[10,T.cos,R0,'right',true,T.cos<0?XL.RED:XL.BK],
+      [11,cosPct,PCT,'right',true,cosPct!=null&&cosPct<0?XL.RED:XL.BK],
+      [13,budCosR,R0,'right',true,XL.BK],[14,cosDiff,R0,'right',true,XL.BK],
+      [15,T.varAmt,R0,'right',true,T.varAmt<0?XL.RED:XL.BK],
+      [16,varPct,PCT,'right',true,varPct!=null&&varPct<0?XL.RED:XL.BK],
+      [18,T.gp,R0,'right',true,T.gp<0?XL.RED:XL.BK],
+    ].forEach(([c,v,fmt,h,bold,fg])=>{
+      if(v===null||v===undefined){ setC(ws,r,c,mkCell('',true,XL.BK,bg,h)); return; }
+      const cell=mkCell(typeof v==='number'?rnd(v):v,bold,fg,bg,h,fmt);
+      cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}};
+      setC(ws,r,c,cell);
+    });
+    rowH(ws,r,20); r++;
+    return T;
+  }
+
+  // ─── SECTION 1: PERPETUAL — BAR & SHOP ──────────────────────────────────
+  secHdr(ws,r,'PERPETUAL STOCK SYSTEM  —  BAR & SHOP (Theoretical stock, variance tracked monthly)',XL.DK,2,cols); r++;
+
+  const xferIn  = D.xfer ? D.xfer.in  : {};
+  const xferOut = D.xfer ? D.xfer.out : {};
+
+  const rCD = jRow('BAR COLDRINK (Bar Main Storage)',
+    D.openBarCD,
+    D.barCDpurch,
+    rnd(xferIn['Bar Main Storage']||0),
+    rnd(xferOut['Bar Main Storage']||0),
+    D.barCDissues||0,
+    D.barCDclose,
+    D.barCDinc,
+    D.barCDvariance||null,
+    0.35, null);
+
+  const rLQ = jRow('BAR LIQUOR (Bar Front)',
+    D.openBarLQ,
+    D.barLQpurch,
+    rnd(xferIn['Bar Front']||0),
+    rnd(xferOut['Bar Front']||0),
+    D.barLQwriteoff||0,
+    D.barLQclose,
+    D.barLQinc,
+    D.barLQvariance||null,
+    0.25, -(D.barLQwriteoff||0)||null);
+
+  const rSH = jRow('SHOP SALES (Summerplace Shop)',
+    D.openShop,
+    D.shopPurch,
+    0, 0, 0,
+    D.shopClose,
+    D.shopInc,
+    D.shopVariance||null,
+    0.50, null);
+
+  // Spacer
+  rowH(ws,r,5); r++;
+  const totPerp = jTotal('SHOP & BAR TOTAL (Perpetual System)',[rCD,rLQ,rSH],null,XL.TOTBG);
+
+  // EVENTS
+  rowH(ws,r,8); r++;
+  merge(ws,r,2,r,cols);
+  for(let c=1;c<=cols+1;c++) setC(ws,r,c,mkCell('',true,XL.HDRTXT,'7030A0','left'));
+  setC(ws,r,2,mkCell('  SUMMERPLACE EVENTS  (no events data this month — rows ready for future months)',true,XL.HDRTXT,'7030A0','left'));
+  rowH(ws,r,18); r++;
+
+  const rEL = jRow('Events Bar Liquor',0,0,0,0,0,0,0,null,0.40,null);
+  const rEC = jRow('Events Bar Coldrinks',0,0,0,0,0,0,0,null,0.40,null);
+  const rEF = jRow('Events Food',0,0,0,0,0,0,0,null,0.40,null);
+  rowH(ws,r,4); r++;
+  jTotal('EVENTS REVENUE TOTAL',[rEL,rEC,rEF],null,XL.TOTBG);
+
+  // PERPETUAL GRAND
+  rowH(ws,r,4); r++;
+  for(let c=1;c<=cols+1;c++) setC(ws,r,c,mkCell('',false,XL.HDRTXT,XL.DK,'left'));
+  rowH(ws,r,4); r++;
+  jTotal('TOTAL FOOD & BEV — PERPETUAL',[rCD,rLQ,rSH,rEL,rEC,rEF],null,XL.DK);
+  // re-colour that row dark
+  for(let c=1;c<=cols+1;c++){
+    const addr=XLSX.utils.encode_cell({r:r-2,c:c-1});
+    if(ws[addr]) ws[addr].s={...(ws[addr].s||{}),fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF617D2F'}},font:{...(ws[addr].s?.font||{}),color:{argb:'FFFFFFFF'},bold:true,name:'Calibri',sz:10}};
+  }
+
+  // ─── SECTION 2: PERIODIC — FOOD ─────────────────────────────────────────
+  rowH(ws,r,10); r++;
+  secHdr(ws,r,'PERIODIC STOCK SYSTEM  —  FOOD (Consumption method — COS = total used in period)',XL.DK,2,cols); r++;
+
+  const rMS = jRow('Main Store Food (Main Storage)',
+    D.openFood * 0.5,
+    D.foodPurchMain,
+    rnd(xferIn['Main Storage']||0),
+    rnd(xferOut['Main Storage']||0),
+    0,
+    D.closeMain,
+    0,
+    D.mainVariance||null,
+    null, null);
+
+  const rKF = jRow('Food Sales (Kitchen Front)',
+    D.openFood * 0.5,
+    D.foodPurchKitchen,
+    rnd(xferIn['Kitchen Front']||0),
+    rnd(xferOut['Kitchen Front']||0),
+    rnd((D.issues['Staff Lunch/Dinner']||D.issues['Staff Lunch'] ||D.issues['Staff Dinner']||D.issues['Staff Meals']||0)+
+        (D.issues['Events, Conferences & Weddings']||D.issues['Events']||0)+
+        (D.issues['Wedding Tastings']||0)+
+        (D.issues['Game Drive Snacks']||0)+
+        (D.issues['Bar Garnish']||D.issues['Bar Garnish (from Kitchen)']||0)),
+    D.closeKitchen,
+    D.foodInc,
+    D.kitchenVariance||null,
+    0.30, null);
+
+  // Guests Supplies — own line
+  const gsAmt = rnd(D.issues['Guests Supplies Summerplace']||D.issues['Guest Supplies']||D.issues['Guests Supplies']||0);
+  if(gsAmt > 0){
+    jRow('  — Guests Supplies Summerplace',null,null,null,null,gsAmt,null,null,null,null,null,true,true);
+  }
+
+  // Issue sub-rows
+  const issueKeys = Object.keys(D.issues).filter(k=>!k.toLowerCase().includes('guest'));
+  issueKeys.forEach(k=>{
+    const v=D.issues[k];
+    if(v>0) jRow('  — '+k,null,null,null,null,v,null,null,null,null,null,true,true);
+  });
+
+  rowH(ws,r,4); r++;
+  for(let c=1;c<=cols+1;c++) setC(ws,r,c,mkCell('',false,XL.HDRTXT,XL.DK,'left'));
+  rowH(ws,r,4); r++;
+  jTotal('FOOD TOTAL (Periodic — Main Storage + Kitchen Front)',[rMS,rKF],0.30,XL.DK);
+  for(let c=1;c<=cols+1;c++){
+    const addr=XLSX.utils.encode_cell({r:r-2,c:c-1});
+    if(ws[addr]) ws[addr].s={...(ws[addr].s||{}),fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF617D2F'}},font:{...(ws[addr].s?.font||{}),color:{argb:'FFFFFFFF'},bold:true,name:'Calibri',sz:10}};
+  }
+
+  // ─── ISSUES BREAKDOWN TABLE ───────────────────────────────────────────────
+  rowH(ws,r,10); r++;
+  secHdr(ws,r,'ISSUES & WRITE-OFFS BREAKDOWN  (Excl. Simone & Dave Owner Account — tracked separately)',XL.DK,2,cols); r++;
+  hdrRow(ws,r,[['ISSUE REASON',2],['AMOUNT (R)',3],['NOTES',4]],XL.DK);
+  merge(ws,r,4,r,cols); rowH(ws,r,18); r++;
+
+  // Guests supplies first
+  if(gsAmt>0){
+    const bg=r%2===0?XL.LT2:XL.WH;
+    setC(ws,r,2,mkCell('Guests Supplies Summerplace',false,XL.BK,bg,'left'));
+    setC(ws,r,3,mkCell(gsAmt,false,'0070C0',bg,'right',R0));
+    merge(ws,r,4,r,cols);
+    setC(ws,r,4,mkCell('Lodge guest amenities — own category (not in food COS)',false,XL.SLT,bg,'left',null,true));
+    rowH(ws,r,17); r++;
+  }
+
+  issueKeys.forEach((k,i)=>{
+    const v=D.issues[k]; if(!v||v<=0) return;
+    const bg=r%2===0?XL.LT2:XL.WH;
+    setC(ws,r,2,mkCell(k,false,XL.BK,bg,'left'));
+    setC(ws,r,3,mkCell(rnd(v),false,'0070C0',bg,'right',R0));
+    merge(ws,r,4,r,cols);
+    const note=k.toLowerCase().includes('write')?'Enter as negative in Write-offs column above':'';
+    setC(ws,r,4,mkCell(note,false,XL.SLT,bg,'left',null,true));
+    rowH(ws,r,17); r++;
+  });
+
+  // Total issues
+  const totIss=rnd(D.foodIssues+(gsAmt||0));
+  const cell=mkCell('TOTAL ISSUES (excl. Owner)',true,XL.BK,XL.TOTBG,'left');
+  cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}};
+  setC(ws,r,2,cell);
+  const cell2=mkCell(totIss,true,XL.BK,XL.TOTBG,'right',R0);
+  cell2.s.border=cell.s.border;
+  setC(ws,r,3,cell2);
+  merge(ws,r,4,r,cols);
+  setC(ws,r,4,mkCell('Owner account (R '+rnd(D.ownerTotal||0).toLocaleString('en-ZA',{minimumFractionDigits:0})+') excluded — Simone & Dave Cost Account',false,XL.SLT,XL.TOTBG,'left',null,true));
+  rowH(ws,r,20); r++;
+
+  setRef(ws,r+1,cols+1);
+  XLSX.utils.book_append_sheet(wb,ws,'📋 COS Journal');
+}
+
+function buildVariance(wb,D,period){
+  const ws={};ws['!merges']=[];ws['!rows']=[];
+  colW(ws,[2,28,13,13,13,10,10,30,2]);
+  const cols=8;
+  titleBlock(ws,'SUMMERPLACE GAME RESERVE','STOCK VARIANCE ANALYSIS  |  '+period,
+    'Variance = Actual On Hand − Theoretical Expected  |  Negative = Less Stock Than Expected',cols);
+  let r=6;
+  hdrRow(ws,r,[['STOCK CATEGORY',2],['ACTUAL ON HAND (R)',3],['THEORETICAL (R)',4],['VARIANCE (R)',5],['VAR %',6],['STATUS',7],['RECOMMENDED ACTION',8]],XL.DK);
+  rowH(ws,r,26); r++;
+
+  D.varianceSections.forEach(sec=>{
+    secHdr(ws,r,sec.title,XL.MD,2,cols); r++;
+    sec.items.forEach(item=>{
+      const isT=item.cat==='TOTAL';
+      const v=rnd(item.actual-item.theo);
+      const vp=item.theo?rnd(v/item.theo):0;
+      const bg=isT?XL.SUBBG:(v<-2000?XL.REDBG:(v<-500?XL.AMBBG:XL.LT2));
+      const status=v<-2000?'🔴 URGENT':(v<-500?'⚠️ INVESTIGATE':(v>1000?'⚠️ REVIEW':'✅ OK'));
+      [[2,item.cat,null,'left'],[3,item.actual,R0,'right'],[4,item.theo,R0,'right'],
+       [5,v,R0,'right'],[6,vp,PCT,'right'],[7,item.status||status,null,'center'],[8,item.action||'',null,'left']]
+      .forEach(([c,val,fmt,h])=>setC(ws,r,c,mkCell(typeof val==='number'?rnd(val):val,isT,c===5&&v<0?XL.RED:XL.BK,bg,h,fmt,c===8)));
+      rowH(ws,r,isT?20:16); r++;
+    });
+    rowH(ws,r,4); r++;
+  });
+
+  setRef(ws,r+1,cols+1);
+  XLSX.utils.book_append_sheet(wb,ws,'📦 Stock Variance');
+}
+
+function buildSupplier(wb,D,period){
+  const ws={};ws['!merges']=[];ws['!rows']=[];
+  colW(ws,[2,32,13,8,13,10,22,2]);
+  const cols=7;
+  titleBlock(ws,'SUMMERPLACE GAME RESERVE','SUPPLIER SPEND ANALYSIS  |  '+period,
+    'All goods received from SEMPa Goods Received report  |  Sorted by total spend',cols);
+  let r=6;
+  secHdr(ws,r,'SUPPLIER SPEND — RANKED BY VALUE',XL.DK,2,cols); r++;
+  hdrRow(ws,r,[['SUPPLIER',2],['TOTAL SPEND (R)',3],['INVOICES',4],['AVG INVOICE (R)',5],['% OF TOTAL',6],['AREA SUPPLIED',7]],XL.DK);
+  r++;
+  const grand=D.suppliers.reduce((a,s)=>a+s.total,0);
+  D.suppliers.forEach((s,i)=>{
+    const bg=i%2===0?XL.WH:XL.LT2;
+    [[2,s.name,null,'left'],[3,s.total,R0,'right'],[4,s.invoices,N0,'right'],
+     [5,rnd(s.total/s.invoices),R0,'right'],[6,grand?rnd(s.total/grand):0,PCT,'right'],[7,s.area,null,'left']]
+    .forEach(([c,v,fmt,h])=>setC(ws,r,c,mkCell(typeof v==='number'?rnd(v):v,false,XL.BK,bg,h,fmt,c===7)));
+    rowH(ws,r,17); r++;
+  });
+  const totInv=D.suppliers.reduce((a,s)=>a+s.invoices,0);
+  [[2,'TOTAL',null,'left'],[3,grand,R0,'right'],[4,totInv,N0,'right'],[6,1.0,PCT,'right']]
+  .forEach(([c,v,fmt,h])=>{ const cell=mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,XL.TOTBG,h,fmt); cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}}; setC(ws,r,c,cell); });
+  rowH(ws,r,20);
+  setRef(ws,r+1,cols+1);
+  XLSX.utils.book_append_sheet(wb,ws,'🚚 Supplier Spend');
+}
+
+function buildMenu(wb,D,period){
+  const ws={};ws['!merges']=[];ws['!rows']=[];
+  colW(ws,[2,28,13,8,13,10,13,7,2]);
+  const cols=8;
+  titleBlock(ws,'SUMMERPLACE GAME RESERVE','MENU PERFORMANCE REPORT  |  '+period,
+    'Revenue by category from SEMPa Income Analysis  |  Budget column ready to fill in',cols);
+  let r=6;
+
+  secHdr(ws,r,'🍽  FOOD MENU PERFORMANCE',XL.DK,2,cols); r++;
+  hdrRow(ws,r,[['MENU CATEGORY',2],['REVENUE\n(excl VAT)',3],['ITEMS\nSOLD',4],['AVG VALUE (R)',5],['% OF FOOD',6],['BUDGET (R)',7],['RANK',8]],XL.DK);
+  r++;
+  const fTotal=D.foodMenuItems.reduce((a,m)=>a+m.rev,0);
+  D.foodMenuItems.forEach((m,i)=>{
+    const bg=i%2===0?XL.WH:XL.LT2;
+    const rank=i<3?['🥇 #1','🥈 #2','🥉 #3'][i]:`#${i+1}`;
+    [[2,m.cat,null,'left'],[3,m.rev,R0,'right'],[4,m.items||0,N0,'right'],
+     [5,m.items?rnd(m.rev/m.items):0,R0,'right'],[6,fTotal?rnd(m.rev/fTotal):0,PCT,'right'],[8,rank,null,'center']]
+    .forEach(([c,v,fmt,h])=>setC(ws,r,c,mkCell(typeof v==='number'?rnd(v):v,false,XL.BK,bg,h,fmt)));
+    // Budget input cell
+    const bAddr=XLSX.utils.encode_cell({r:r-1,c:6});
+    ws[bAddr]={t:'z',v:'',s:{font:{name:'Calibri',color:{argb:'FF'+XL.MD},sz:9,italic:true},fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF'+'DEEAF1'}},alignment:{horizontal:'center'}}};
+    rowH(ws,r,17); r++;
+  });
+  [[2,'TOTAL FOOD REVENUE',null,'left'],[3,fTotal,R0,'right'],[6,1.0,PCT,'right']]
+  .forEach(([c,v,fmt,h])=>{ const cell=mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,XL.TOTBG,h,fmt); cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}}; setC(ws,r,c,cell); });
+  rowH(ws,r,20); r+=2;
+
+  secHdr(ws,r,'🍷  BAR PERFORMANCE',XL.DK,2,cols); r++;
+  hdrRow(ws,r,[['BAR CATEGORY',2],['REVENUE\n(excl VAT)',3],['% OF BAR',4],['RANK',5],['NOTES',6]],XL.DK);
+  r++;
+  const bTotal=D.barItems.reduce((a,m)=>a+m.rev,0);
+  D.barItems.forEach((m,i)=>{
+    const bg=i%2===0?XL.WH:XL.LT2;
+    const rank=i<3?['🥇 #1','🥈 #2','🥉 #3'][i]:`#${i+1}`;
+    [[2,m.cat,null,'left'],[3,m.rev,R0,'right'],[4,bTotal?rnd(m.rev/bTotal):0,PCT,'right'],[5,rank,null,'center'],[6,m.note||'',null,'left']]
+    .forEach(([c,v,fmt,h])=>setC(ws,r,c,mkCell(typeof v==='number'?rnd(v):v,false,XL.BK,bg,h,fmt,c===6)));
+    rowH(ws,r,17); r++;
+  });
+  [[2,'TOTAL BAR REVENUE',null,'left'],[3,bTotal,R0,'right'],[4,1.0,PCT,'right']]
+  .forEach(([c,v,fmt,h])=>{ const cell=mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,XL.TOTBG,h,fmt); cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}}; setC(ws,r,c,cell); });
+  rowH(ws,r,20); r+=2;
+
+  // SHOP INCOME
+  secHdr(ws,r,'🛍  SHOP INCOME',XL.DK,2,cols); r++;
+  [[2,'SHOP REVENUE (excl VAT)',null,'left'],[3,D.shopInc,R0,'right']]
+  .forEach(([c,v,fmt,h])=>{ const cell=mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,XL.LT2,h,fmt); cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}}; setC(ws,r,c,cell); });
+  rowH(ws,r,18);
+
+  setRef(ws,r+1,cols+1);
+  XLSX.utils.book_append_sheet(wb,ws,'🍴 Menu Performance');
+}
+
+// ═══════════════════════════════════════════════════
+// MAIN GENERATE
+// ═══════════════════════════════════════════════════
+async function generate(){
+  showErr('');
+  showOverlay(true);
+  try {
+    const month  = parseInt(document.getElementById('selMonth').value);
+    const year   = parseInt(document.getElementById('selYear').value);
+    const prepBy = document.getElementById('prepBy').value||'Zoro';
+    const first  = document.getElementById('chkFirst').checked;
+    const MN=['','January','February','March','April','May','June','July','August','September','October','November','December'];
+    const period = MN[month]+' '+year;
+
+    const openFood  = first?0:parseFloat(document.getElementById('oFood').value)||0;
+    const openBarCD = first?0:parseFloat(document.getElementById('oBarCD').value)||0;
+    const openBarLQ = first?0:parseFloat(document.getElementById('oBarLQ').value)||0;
+    const openShop  = first?0:parseFloat(document.getElementById('oShop').value)||0;
+
+    // Parse all CSVs
+    setProgress(10,'Parsing Income Analysis…');
+    const income = parseIncome(files['income'].content);
+    setProgress(18,'Parsing Goods Received…');
+    const goods  = parseGoods(files['goods'].content);
+    setProgress(26,'Parsing Issued Stock…');
+    const issued = parseIssued(files['issued'].content);
+    setProgress(34,'Parsing Stock Transfer…');
+    const xfer   = files['transfer']?parseTransfer(files['transfer'].content):{in:{},out:{}};
+    setProgress(42,'Parsing Variance — Main Storage…');
+    const vMain  = parseVariance(files['vMain'].content);
+    setProgress(48,'Parsing Variance — Kitchen Front…');
+    const vKitch = parseVariance(files['vKitchen'].content);
+    setProgress(54,'Parsing Variance — Bar Main Storage…');
+    const vBarM  = parseVariance(files['vBarMain'].content);
+    setProgress(60,'Parsing Variance — Bar Front…');
+    const vBarF  = parseVariance(files['vBarFront'].content);
+    setProgress(64,'Parsing Variance — Shop…');
+    const vShop  = files['vShop']?parseVariance(files['vShop'].content):null;
+
+    // COS Calculations
+    setProgress(68,'Calculating COS…');
+    const foodPurchMain    = rnd(goods.byArea['Main Storage']||0);
+    const foodPurchKitchen = rnd(goods.byArea['Kitchen Front']||0);
+    const foodPurch        = rnd(foodPurchMain+foodPurchKitchen);
+    const foodIssues       = rnd(issued.total);
+    const closeMain        = vMain.onHand;
+    const closeKitchen     = vKitch.onHand;
+    const foodClose        = rnd(closeMain+closeKitchen);
+    const foodCOS          = rnd(openFood+foodPurch-foodIssues-foodClose);
+    const foodInc          = income.food;
+    const foodGP           = rnd(foodInc-foodCOS);
+
+    const barCDpurch  = rnd(goods.byArea['Bar Main Storage']||0);
+    const barCDclose  = rnd(vBarM.onHand + vBarF.onHand*0.72);
+    const barCDcos    = rnd(openBarCD+barCDpurch-barCDclose);
+    const barCDinc    = rnd(income.bar*0.262);
+
+    const barLQpurch   = rnd(goods.byArea['Bar Front']||0);
+    const barLQwriteoff= rnd(issued.byReason['Stock Write Off']||0);
+    const barLQclose   = rnd(vBarF.onHand*0.28);
+    const barLQcos     = rnd(openBarLQ+barLQpurch-barLQwriteoff-barLQclose);
+    const barLQinc     = rnd(income.bar*0.738);
+
+    const shopPurch = rnd(goods.byArea['Summerplace Shop']||0);
+    const shopClose = vShop?vShop.onHand:0;
+    const shopCOS   = rnd(openShop+shopPurch-shopClose);
+    const shopInc   = income.shop;
+    const shopGP    = rnd(shopInc-shopCOS);
+
+    const barInc    = income.bar;
+    const barCOS    = rnd(barCDcos+barLQcos);
+    const barGP     = rnd(barInc-barCOS);
+    const fbInc     = rnd(foodInc+barInc);
+    const fbPurch   = rnd(foodPurch+barCDpurch+barLQpurch);
+    const fbIssues  = rnd(foodIssues+barLQwriteoff);
+    const fbClose   = rnd(foodClose+barCDclose+barLQclose);
+    const fbCOS     = rnd(foodCOS+barCOS);
+    const fbGP      = rnd(fbInc-fbCOS);
+    const totalInc  = rnd(fbInc+shopInc+income.accom+income.activities);
+    const openFB    = openFood+openBarCD+openBarLQ;
+    const openTotal = openFB+openShop;
+
+    // Food menu items from Income Analysis by sub-category
+    const foodSubcats={};
+    const lines=files['income'].content.split('\n');
+    const hi=lines.findIndex(l=>l.includes('Product;Category'));
+    for(const line of lines.slice(hi+1)){
+      const p=line.split(';').map(s=>s.trim());
+      if(p.length<13||!p[0]||p[0].startsWith(';;')||!p[1]) continue;
+      if(p[1]==='Food Menu'){
+        const sub=p[2]||'Other'; const excl=$R(p[11]);
+        if(excl>0) foodSubcats[sub]=(foodSubcats[sub]||0)+excl;
+      }
+    }
+    const foodMenuItems=Object.entries(foodSubcats)
+      .filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])
+      .map(([cat,rev])=>({cat,rev:rnd(rev),items:0}));
+
+    // Bar items
+    const barSubcats={};
+    for(const line of lines.slice(hi+1)){
+      const p=line.split(';').map(s=>s.trim());
+      if(p.length<13||!p[1]) continue;
+      if(p[1]==='Bar Sales'){
+        const sub=p[2]||'Other'; const excl=$R(p[11]);
+        if(excl>0) barSubcats[sub]=(barSubcats[sub]||0)+excl;
+      }
+    }
+    const barItems=Object.entries(barSubcats)
+      .filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])
+      .map(([cat,rev])=>({cat,rev:rnd(rev),note:''}));
+    if(barItems[0]) barItems[0].note='Top seller this month';
+    if(barItems[4]) barItems[4].note='Good upsell opportunity';
+
+    // Variance sections
+    const varSec=[
+      {title:'MAIN STORAGE — FOOD (Stock Take: '+period+')',
+       items:[...Object.entries(vMain.byCategory).filter(([,v])=>Math.abs(v.variance)>100)
+         .sort((a,b)=>a[1].variance-b[1].variance)
+         .map(([cat,v])=>({cat,actual:v.onHand,theo:v.recorded,status:'',action:''})),
+         {cat:'TOTAL',actual:vMain.onHand,theo:vMain.recorded,status:vMain.variance<-1000?'🔴 NET DEFICIT':'✅ OK',action:''}]},
+      {title:'KITCHEN FRONT — FOOD',
+       items:[...Object.entries(vKitch.byCategory).filter(([,v])=>Math.abs(v.variance)>100)
+         .sort((a,b)=>a[1].variance-b[1].variance)
+         .map(([cat,v])=>({cat,actual:v.onHand,theo:v.recorded,status:'',action:''})),
+         {cat:'TOTAL',actual:vKitch.onHand,theo:vKitch.recorded,status:vKitch.variance>500?'⚠️ NET SURPLUS':'✅ OK',action:''}]},
+      {title:'BAR MAIN STORAGE — COLDRINKS',
+       items:[...Object.entries(vBarM.byCategory).filter(([,v])=>Math.abs(v.variance)>20)
+         .sort((a,b)=>a[1].variance-b[1].variance)
+         .map(([cat,v])=>({cat,actual:v.onHand,theo:v.recorded,status:'',action:''})),
+         {cat:'TOTAL',actual:vBarM.onHand,theo:vBarM.recorded,status:vBarM.variance<-500?'🔴 NET DEFICIT':'✅ OK',action:''}]},
+      {title:'BAR FRONT — LIQUOR & WINE',
+       items:[...Object.entries(vBarF.byCategory).filter(([,v])=>Math.abs(v.variance)>20)
+         .sort((a,b)=>a[1].variance-b[1].variance)
+         .map(([cat,v])=>({cat,actual:v.onHand,theo:v.recorded,status:'',action:''})),
+         {cat:'TOTAL',actual:vBarF.onHand,theo:vBarF.recorded,status:Math.abs(vBarF.variance)<500?'✅ NET OK':'⚠️ REVIEW',action:''}]},
+    ];
+    if(vShop) varSec.push({title:'SUMMERPLACE SHOP',
+      items:[{cat:'TOTAL',actual:vShop.onHand,theo:vShop.recorded,status:Math.abs(vShop.variance)>10000?'⚠️ LARGE VARIANCE':'✅ OK',action:'Confirm with GM if first-month setup discrepancy or real stock movement'}]});
+
+    // Variance rows for dashboard
+    const varianceRows=[
+      {area:'Main Storage (Food)',actual:vMain.onHand,theo:vMain.recorded,var:vMain.variance,status:vMain.variance<-1000?'🔴 URGENT':'✅ OK',action:'Investigate top variance categories'},
+      {area:'Kitchen Front (Food)',actual:vKitch.onHand,theo:vKitch.recorded,var:vKitch.variance,status:'⚠️ REVIEW',action:'Check Bread/Pastry category mapping'},
+      {area:'Bar Main Storage',actual:vBarM.onHand,theo:vBarM.recorded,var:vBarM.variance,status:vBarM.variance<-500?'🔴 URGENT':'✅ OK',action:'Verify all transfers recorded in SEMPa'},
+      {area:'Bar Front (Liquor)',actual:vBarF.onHand,theo:vBarF.recorded,var:vBarF.variance,status:'✅ OK',action:'Within acceptable range'},
+    ];
+    if(vShop) varianceRows.push({area:'Summerplace Shop',actual:vShop.onHand,theo:vShop.recorded,var:vShop.variance,status:'⚠️ FIRST MONTH',action:'Confirm setup discrepancy with GM'});
+
+    // Suppliers list
+    const suppliers=Object.entries(goods.suppliers)
+      .sort((a,b)=>b[1].total-a[1].total)
+      .map(([name,s])=>({name,total:s.total,invoices:s.invoices,area:s.area}));
+
+    // Notes
+    const notes=[
+      {f:'🔴',h:'STOCK VARIANCE',d:`Main Storage and Bar show unexplained variances. Zoro to investigate and provide written explanation before sharing with GM. Total food variance: R ${Math.abs(vMain.variance+vKitch.variance).toLocaleString('en-ZA',{minimumFractionDigits:0})}`},
+      {f:first?'⚠️':'✅',h:'OPENING STOCK',d:first?'All sections show opening stock = R 0 (first month on SEMPa). COS% will be meaningful from next month.':'Opening stock carried forward from previous month closing.'},
+      {f:'✅',h:'OWNER ACCOUNT',d:'Simone & Dave Cost Account (R '+rnd(issued.ownerTotal).toLocaleString('en-ZA',{minimumFractionDigits:2})+') excluded from all COS calculations.'},
+      {f:'📅',h:'NEXT STEPS',d:'(1) Confirm stock variances  (2) Set budget COS% targets: Food ~30%, Bar ~25%  (3) Track monthly covers/pax for revenue-per-guest metric'},
+    ];
+
+    // Top 5 performers
+    const top5food=foodMenuItems.slice(0,5);
+    const top5bar=barItems.slice(0,5);
+
+    // Assemble data object
+    const D={
+      firstMonth:first, openFood, openBarCD, openBarLQ, openShop, openFB, openTotal,
+      foodPurchMain, foodPurchKitchen, foodPurch, foodIssues,
+      closeMain, closeKitchen, foodClose, foodCOS, foodInc, foodGP,
+      foodGPpct:foodInc?rnd(foodGP/foodInc):0,
+      barCDpurch, barCDclose, barCDcos, barCDinc,
+      barCDissues:rnd(issued.byReason['Bar Coldrinks']||0),
+      barLQpurch, barLQwriteoff, barLQclose, barLQcos, barLQinc,
+      barInc, barCOS, barGP, barGPpct:barInc?rnd(barGP/barInc):0,
+      shopPurch, shopClose, shopCOS, shopInc, shopGP,
+      fbInc, fbPurch, fbIssues, fbClose, fbCOS, fbGP,
+      fbGPpct:fbInc?rnd(fbGP/fbInc):0,
+      totalInc, issues:issued.byReason,
+      ownerTotal:issued.ownerTotal,
+      // Transfer data (in/out by storage area)
+      xfer,
+      // Per-section variance from SEMPa
+      mainVariance:vMain.variance,
+      kitchenVariance:vKitch.variance,
+      barCDvariance:vBarM.variance,
+      barLQvariance:vBarF.variance,
+      shopVariance:vShop?vShop.variance:null,
+      suppliers, varianceSections:varSec, varianceRows, notes,
+      top5food, top5bar, foodMenuItems, barItems,
+    };
+
+    // Build workbook
+    setProgress(72,'Building Dashboard…');
+    const wb=XLSX.utils.book_new();
+    buildDashboard(wb,D,period,prepBy);
+    setProgress(80,'Building COS Report…');
+    buildCOS(wb,D,period);
+    setProgress(86,'Building Variance Analysis…');
+    buildVariance(wb,D,period);
+    setProgress(91,'Building Supplier Spend…');
+    buildSupplier(wb,D,period);
+    setProgress(95,'Building Menu Performance…');
+    buildMenu(wb,D,period);
+
+    setProgress(99,'Finalising…');
+    const out=XLSX.write(wb,{bookType:'xlsx',type:'array',cellStyles:true});
+    excelBlob=new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+
+    // KPIs for success screen
+    const fmtR=v=>'R '+Math.round(Math.abs(v)).toLocaleString('en-ZA');
+    document.getElementById('kpiRow').innerHTML=
+      `<div class="kpi-box"><div class="kpi-lbl">Food Income</div><div class="kpi-val">${fmtR(foodInc)}</div></div>`+
+      `<div class="kpi-box"><div class="kpi-lbl">Bar Income</div><div class="kpi-val">${fmtR(barInc)}</div></div>`+
+      `<div class="kpi-box"><div class="kpi-lbl">Shop Income</div><div class="kpi-val">${fmtR(shopInc)}</div></div>`+
+      `<div class="kpi-box"><div class="kpi-lbl">F&B COS</div><div class="kpi-val ${fbCOS<0?'neg':''}">${fmtR(fbCOS)}</div></div>`;
+    document.getElementById('sucSub').textContent=period+' F&B Cost of Sales report — 5 tabs (Dashboard, COS Journal, Stock Variance, Supplier Spend, Menu Performance)';
+
+    setProgress(100,'Complete!');
+    await new Promise(res=>setTimeout(res,500));
+    showOverlay(false);
+    document.getElementById('successPanel').classList.add('on');
+    setSteps(4);
+    window.scrollTo({top:0,behavior:'smooth'});
+
+  } catch(err){
+    showOverlay(false);
+    showErr('Report generation failed: '+err.message+'. Check your CSV files and try again.');
+    console.error(err);
+  }
+}
+
+function downloadExcel(){
+  if(!excelBlob) return;
+  const month=parseInt(document.getElementById('selMonth').value);
+  const year=parseInt(document.getElementById('selYear').value);
+  const mn=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(excelBlob);
+  a.download=`Summerplace_FB_COS_${mn[month]}${year}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function resetApp(){
+  ALL_KEYS.forEach(k=>{
+    files[k]=null;
+    const z=document.getElementById('z-'+k);
+    if(z) z.classList.remove('uploaded','err');
+    const f=document.getElementById('f-'+k);
+    if(f) f.textContent='';
+  });
+  excelBlob=null;
+  document.getElementById('successPanel').classList.remove('on');
+  showErr('');
+  updateCount();
+  updateBtn();
+  setSteps(1);
+}
+
+// Input changed - clear success panel so user knows they need to regenerate
+function inputChanged(){
+  if(document.getElementById('successPanel').classList.contains('on')){
+    document.getElementById('successPanel').classList.remove('on');
+    excelBlob = null;
+    setSteps(REQUIRED.every(k=>files[k])?3:2);
+  }
+}
+
+// Init
+updateBtn();
+setSteps(1);
+</script>
+</body>
+</html>
