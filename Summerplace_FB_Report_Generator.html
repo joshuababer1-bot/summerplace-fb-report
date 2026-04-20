@@ -828,21 +828,24 @@ function rowH(ws,r,h){ if(!ws['!rows']) ws['!rows']=[]; ws['!rows'][r-1]={hpt:h}
 function colW(ws,widths){ ws['!cols']=widths.map(w=>({wpx:Math.round(w*7.2)})); }
 
 function titleBlock(ws,t1,t2,t3,cols){
-  // Row 1 spacer
   rowH(ws,1,5);
-  // Row 2 main title
+  // Row 2: main title
   merge(ws,2,2,2,cols);
   for(let c=1;c<=cols+1;c++) setC(ws,2,c,mkCell(c===2?'  '+t1:'',true,XL.HDRTXT,XL.DK,'left'));
   rowH(ws,2,28);
-  // Row 3 subtitle
+  // Row 3: subtitle
   merge(ws,3,2,3,cols);
   for(let c=1;c<=cols+1;c++) setC(ws,3,c,mkCell(c===2?'  '+t2:'',true,XL.HDRTXT,XL.MD,'left'));
   rowH(ws,3,20);
-  // Row 4 sub-line
+  // Row 4: sub-line
   merge(ws,4,2,4,cols);
   for(let c=1;c<=cols+1;c++) setC(ws,4,c,mkCell(c===2?'  '+t3:'',false,XL.HDRTXT,'4A6B20','left',null,false));
   rowH(ws,4,13);
-  rowH(ws,5,5);
+  // Row 5: tagline
+  merge(ws,5,2,5,cols);
+  for(let c=1;c<=cols+1;c++) setC(ws,5,c,mkCell(c===2?'  Find Your Flow In Nature':'',false,XL.SLT,XL.WH,'left',null,false));
+  rowH(ws,5,13);
+  rowH(ws,6,5);
 }
 
 function secHdr(ws,r,label,bg,c1,c2){
@@ -896,75 +899,69 @@ function setRef(ws,maxR,maxC){
 // ═══════════════════════════════════════════════════
 // SHEET BUILDERS
 // ═══════════════════════════════════════════════════
+
 function buildDashboard(wb,D,period,prepBy){
   const ws={};ws['!merges']=[];ws['!rows']=[];
-  colW(ws,[2,28,13,13,13,13,13,13,13,2]);
-  const cols=9;
-  titleBlock(ws,
-    'SUMMERPLACE GAME RESERVE',
-    'F&B COST OF SALES DASHBOARD  |  '+period,
-    'Prepared by: '+prepBy+'  ·  Period: '+period+'  ·  Opening: '+(D.firstMonth?'R 0 (First Month on SEMPa)':'Previous month closing stock'),
-    cols);
+  colW(ws,[2,22,13,13,13,13,13,13,2]);
+  const cols=8;
+  titleBlock(ws,'  SUMMERPLACE GAME RESERVE','  F&B Cost of Sales Dashboard  |  '+period,
+    '  Prepared by: '+prepBy+'   •   Period: '+period+'   •   Opening: '+(D.firstMonth?'R 0 (First Month on SEMPa)':'Previous month closing stock'),cols);
   let r=6;
 
-  // REVENUE KPIs
-  secHdr(ws,r,'REVENUE OVERVIEW',XL.DK,2,cols); r++;
-  const revL=['FOOD REVENUE','BAR REVENUE','SHOP REVENUE','F&B COMBINED','TOTAL ALL'];
-  const revV=[D.foodInc,D.barInc,D.shopInc,D.fbInc,D.totalInc];
-  const revBG=[XL.MD,XL.MD,XL.MD,XL.DK,XL.BLKBG];
-  revL.forEach((l,i)=>{setC(ws,r,2+i,mkCell(l,true,XL.HDRTXT,revBG[i],'center',null,true));rowH(ws,r,20);});
-  revV.forEach((v,i)=>{setC(ws,r+1,2+i,mkCell(rnd(v),true,XL.HDRTXT,revBG[i],'center',R0));rowH(ws,r+1,26);});
-  r+=2; rowH(ws,r,5); r++;
+  // REVENUE OVERVIEW
+  secHdr(ws,r,'  REVENUE OVERVIEW',XL.DK,2,cols); r++;
+  ['FOOD REVENUE','BAR REVENUE','SHOP REVENUE','EVENTS REVENUE','TOTAL F&B'].forEach((l,i)=>setC(ws,r,2+i,mkCell(l,true,XL.HDRTXT,XL.MD,'center',null,true)));
+  rowH(ws,r,20); r++;
+  [D.foodInc,D.barInc,D.shopInc,0,rnd(D.foodInc+D.barInc+D.shopInc)].forEach((v,i)=>setC(ws,r,2+i,mkCell(rnd(v),true,XL.HDRTXT,i===4?XL.DK:XL.MD,'center',R0)));
+  rowH(ws,r,26); r++;
 
-  // GP KPIs
-  secHdr(ws,r,'GROSS PROFIT',XL.MD,2,cols); r++;
-  const gpL=['FOOD GP','FOOD GP%','BAR GP','BAR GP%','F&B GP%'];
-  const gpV=[D.foodGP,D.foodGPpct,D.barGP,D.barGPpct,D.fbGPpct];
-  const gpF=[R0,PCT,R0,PCT,PCT];
-  gpL.forEach((l,i)=>{setC(ws,r,2+i,mkCell(l,true,XL.HDRTXT,XL.MD,'center',null,true));rowH(ws,r,20);});
-  gpV.forEach((v,i)=>{setC(ws,r+1,2+i,mkCell(rnd(v),true,XL.HDRTXT,XL.MD,'center',gpF[i]));rowH(ws,r+1,26);});
-  r+=2;
-
+  // GROSS PROFIT
+  secHdr(ws,r,'  GROSS PROFIT',XL.DK,2,cols); r++;
+  ['FOOD GP','FOOD GP%','BAR & SHOP GP','BAR & SHOP GP%','TOTAL F&B GP%'].forEach((l,i)=>setC(ws,r,2+i,mkCell(l,true,XL.HDRTXT,XL.MD,'center',null,true)));
+  rowH(ws,r,20); r++;
+  const fbGP=rnd(D.foodGP+D.barGP+D.shopGP);
+  const fbInc2=rnd(D.foodInc+D.barInc+D.shopInc);
+  [D.foodGP,D.foodInc?rnd(D.foodGP/D.foodInc):0,rnd(D.barGP+D.shopGP),
+   rnd(D.barInc+D.shopInc)?rnd((D.barGP+D.shopGP)/rnd(D.barInc+D.shopInc)):0,
+   fbInc2?rnd(fbGP/fbInc2):0].forEach((v,i)=>{
+    setC(ws,r,2+i,mkCell(rnd(v),true,XL.HDRTXT,XL.MD,'center',i===1||i===3||i===4?PCT:R0));
+  });
+  rowH(ws,r,26); r++;
   if(D.firstMonth){
-    noteRow(ws,r,'⚠️  Opening Stock = R 0 (first month on SEMPa). GP% is inflated and COS% is negative — this is expected. True ratios from April.',2,cols,XL.AMBBG,'7F3F00');
+    noteRow(ws,r,'  ⚠  Opening Stock = R 0 (first month on SEMPa). GP% is inflated and COS% is negative — this is expected. True ratios from April onwards.',2,cols,XL.AMBBG,'7F3F00');
     r++;
   }
-  rowH(ws,r,5); r++;
 
-  // VARIANCE RAG
-  secHdr(ws,r,'STOCK VARIANCE — RAG STATUS  (Negative = less stock than expected)',XL.DK,2,cols); r++;
-  hdrRow(ws,r,[['STORAGE AREA',2],['ACTUAL ON HAND (R)',3],['THEORETICAL (R)',4],['VARIANCE (R)',5],['VAR %',6],['STATUS',7],['PRIORITY ACTION',8]],XL.DK);
-  r++;
+  // STOCK VARIANCE RAG
+  secHdr(ws,r,'  STOCK VARIANCE  —  RAG STATUS',XL.DK,2,cols); r++;
+  hdrRow(ws,r,[['STORAGE AREA',2],['ACTUAL ON HAND',3],['THEORETICAL',4],['VARIANCE (R)',5],['VARIANCE %',6],['STATUS',7],['PRIORITY ACTION',8]],XL.DK);
+  rowH(ws,r,20); r++;
   D.varianceRows.forEach(v=>{
     const varPct=v.theo?rnd(v.var/v.theo):0;
-    const bg=v.var<-5000?XL.REDBG:(v.var<-1000?XL.AMBBG:XL.LT2);
-    const tc=v.var<-1000?XL.RED:XL.BK;
+    const pctAbs=Math.abs(varPct);
+    const status=pctAbs<=0.02?'🟢 OK':(pctAbs<=0.05?'🟡 REVIEW':'🔴 URGENT');
+    const bg=pctAbs>0.05?XL.REDBG:(pctAbs>0.02?XL.AMBBG:XL.LT2);
     [[2,v.area,null,'left'],[3,v.actual,R0,'right'],[4,v.theo,R0,'right'],
-     [5,v.var,R0,'right'],[6,varPct,PCT,'right'],[7,v.status,null,'center'],[8,v.action,null,'left']]
+     [5,v.var,R0,'right'],[6,varPct,PCT,'right'],[7,status,null,'center'],[8,v.action,null,'left']]
     .forEach(([c,val,fmt,h])=>setC(ws,r,c,mkCell(typeof val==='number'?rnd(val):val,c===2,c===5&&v.var<0?XL.RED:XL.BK,bg,h,fmt,c===8)));
     rowH(ws,r,20); r++;
   });
-  rowH(ws,r,5); r++;
 
-  // TOP PERFORMERS
-  secHdr(ws,r,'TOP REVENUE PERFORMERS',XL.DK,2,cols); r++;
-  [[2,'🍽 TOP 5 FOOD CATEGORIES'],[3,'REVENUE (excl VAT)'],[5,'🍷 TOP 5 BAR CATEGORIES'],[6,'REVENUE (excl VAT)']]
+  // TOP REVENUE PERFORMERS
+  secHdr(ws,r,'  TOP REVENUE PERFORMERS',XL.DK,2,cols); r++;
+  [[2,'🍽  TOP 5 FOOD CATEGORIES'],[3,'REVENUE (excl VAT)'],[5,'🍷  TOP 5 BAR CATEGORIES'],[6,'REVENUE (excl VAT)']]
   .forEach(([c,l])=>setC(ws,r,c,mkCell(l,true,XL.HDRTXT,XL.MD,'center',null,true)));
   rowH(ws,r,22); r++;
-  D.top5food.forEach((m,i)=>{
+  const top5f=D.foodMenuItems.slice(0,5); const top5b=D.barItems.slice(0,5);
+  for(let i=0;i<5;i++){
     const bg=i%2===0?XL.WH:XL.LT2;
-    setC(ws,r,2,mkCell(m.cat,false,XL.BK,bg,'left'));
-    setC(ws,r,3,mkCell(rnd(m.rev),false,XL.BK,bg,'right',R0));
-    if(D.top5bar[i]){
-      setC(ws,r,5,mkCell(D.top5bar[i].cat,false,XL.BK,bg,'left'));
-      setC(ws,r,6,mkCell(rnd(D.top5bar[i].rev),false,XL.BK,bg,'right',R0));
-    }
+    if(top5f[i]){setC(ws,r,2,mkCell((i+1)+'.  '+top5f[i].cat,false,XL.BK,bg,'left'));setC(ws,r,3,mkCell(rnd(top5f[i].rev),false,XL.BK,bg,'right',R0));}
+    if(top5b[i]){setC(ws,r,5,mkCell((i+1)+'.  '+top5b[i].cat,false,XL.BK,bg,'left'));setC(ws,r,6,mkCell(rnd(top5b[i].rev),false,XL.BK,bg,'right',R0));}
     rowH(ws,r,17); r++;
-  });
-  rowH(ws,r,5); r++;
+  }
 
   // NOTES
-  secHdr(ws,r,'ACTION ITEMS FOR GM & MD',XL.DK,2,cols); r++;
+  secHdr(ws,r,'  ACTION ITEMS FOR GM & MD',XL.DK,2,cols); r++;
   D.notes.forEach(n=>{
     const bg=n.f==='🔴'?XL.REDBG:(n.f==='⚠️'?XL.AMBBG:XL.LT2);
     merge(ws,r,3,r,cols);
@@ -973,266 +970,236 @@ function buildDashboard(wb,D,period,prepBy){
     rowH(ws,r,28); r++;
   });
 
+  // Footer
   rowH(ws,r,4); r++;
   merge(ws,r,2,r,cols);
-  for(let c=1;c<=cols+1;c++) setC(ws,r,c,mkCell(c===2?'Summerplace Game Reserve  ·  MOVE | RELAX | INDULGE | CONNECT  ·  Find Your Flow In Nature':'',false,XL.HDRTXT,XL.DK,'center'));
-  rowH(ws,r,14);
-
-  setRef(ws,r+1,cols);
+  for(let c=1;c<=cols+1;c++) setC(ws,r,c,mkCell(c===2?'  Summerplace Game Reserve   •   MOVE  |  RELAX  |  INDULGE  |  CONNECT   •   Find Your Flow In Nature':'',false,XL.HDRTXT,XL.DK,'center'));
+  rowH(ws,r,16);
+  setRef(ws,r+1,cols+1);
   XLSX.utils.book_append_sheet(wb,ws,'📊 Dashboard');
 }
 
 function buildCOS(wb,D,period){
   const ws={};ws['!merges']=[];ws['!rows']=[];
-  // 19 columns: margin | label | Open | Purch | XfrIn | XfrOut | Issue | Close | Income |
-  //             COS | COS% | BudCOS% | BudCOS(R) | COSDiff | VarAmt | Var% | WriteOffs | GP | GP%
   colW(ws,[2,34,12,12,12,12,12,12,12,10,9,9,12,12,9,12,12,9,2]);
   const cols=18;
-  titleBlock(ws,'SUMMERPLACE GAME RESERVE',
-    'F&B COST OF SALES JOURNAL  |  '+period,
-    'COS = Open+Purch+XfrIn−XfrOut−Issue−Close  |  Blue cells = input from SEMPa  |  Budget COS% = target, set with GM',
-    cols);
+  titleBlock(ws,'  SUMMERPLACE GAME RESERVE','  F&B Cost of Sales Journal  |  '+period,
+    '  COS = Opening + Purchases + Transfer In − Transfer Out − Issues − Closing   •   Blue cells = SEMPa inputs   •   Budget COS% = GM target',cols);
   let r=6;
 
-  // First-month amber notice
+  // First month notice
   if(D.firstMonth){
     merge(ws,r,2,r,cols);
     for(let c=1;c<=cols+1;c++) setC(ws,r,c,mkCell('',false,'7F3F00',XL.AMBBG,'left',null,true));
-    setC(ws,r,2,mkCell('⚠  FIRST MONTH ON SEMPA — Opening Stock = R 0 across all sections. COS figures will be negative (net stock build). Budget COS% targets to be agreed with GM — enter in blue cells only.',false,'7F3F00',XL.AMBBG,'left',null,true));
-    rowH(ws,r,28); r++; rowH(ws,r,5); r++;
+    setC(ws,r,2,mkCell('  ⚠  First month on SEMPa — Opening Stock = R 0 across all sections. COS will be negative (net stock build). Budget COS% targets to be agreed with GM.',false,'7F3F00',XL.AMBBG,'left',null,true));
+    rowH(ws,r,22); r++;
   }
 
-  // Column headers
-  const CH=[
-    ['',2],['OPENING\nSTOCK (R)',3],['PURCHASES\n(R)',4],['TRANSFER\nIN (R)',5],['TRANSFER\nOUT (R)',6],
-    ['ISSUE\nOUT (R)',7],['CLOSING\nSTOCK (R)',8],['INCOME\n(R)',9],['COS\nUSAGE (R)',10],
-    ['ACTUAL\nCOS%',11],['BUDGET\nCOS%',12],['BUDGET\nCOS (R)',13],['COS\nDIFF (R)',14],
-    ['VARIANCE\nAMT (R)',15],['VARIANCE\n%',16],['WRITE-OFFS\n(−ve)',17],['GROSS\nPROFIT (R)',18]
-  ];
+  // EXECUTIVE SUMMARY
+  secHdr(ws,r,'  EXECUTIVE SUMMARY  —  '+period,XL.DK,2,cols); r++;
+  const totInc=rnd(D.foodInc+D.barInc+D.shopInc);
+  const totCOS=rnd(D.foodCOS+D.barCOS+D.shopCOS);
+  const totGP=rnd(totInc-totCOS);
+  ['TOTAL REVENUE',null,null,'TOTAL COS',null,null,'GROSS PROFIT',null,null,'GROSS PROFIT %',null,null,'COS % vs BUDGET']
+  .forEach((l,i)=>{if(l) setC(ws,r,2+i,mkCell(l,true,XL.HDRTXT,XL.MD,'center',null,true));});
+  rowH(ws,r,20); r++;
+  [totInc,null,null,totCOS,null,null,totGP,null,null,totInc?rnd(totGP/totInc):0,null,null,totInc?rnd(totCOS/totInc):0]
+  .forEach((v,i)=>{
+    if(v===null) return;
+    const fmt=i>=9?PCT:R0;
+    setC(ws,r,2+i,mkCell(rnd(v),true,XL.HDRTXT,XL.MD,'center',fmt));
+  });
+  rowH(ws,r,26); r++;
+  // Description row
+  ['F&B Revenue incl. events',null,null,totCOS<0?'Net stock build (1st mo. SEMPa)':'Cost of Sales',null,null,'Revenue − COS',null,null,'Higher is better',null,null,'Target: below budget %']
+  .forEach((l,i)=>{if(l) setC(ws,r,2+i,mkCell(l,false,XL.SLT,XL.WH,'center',null,true));});
+  rowH(ws,r,16); r++;
+
+  // PERFORMANCE BY AREA
+  secHdr(ws,r,'  PERFORMANCE BY AREA',XL.DK,2,cols); r++;
+  hdrRow(ws,r,[['AREA',2],['REVENUE',5],['COS',7],['GROSS PROFIT',9],['ACTUAL COS%',11],['BUDGET COS%',13],['VS BUDGET',15],['STATUS',17]],XL.MD);
+  rowH(ws,r,20); r++;
+  const barShopInc=rnd(D.barInc+D.shopInc); const barShopCOS=rnd(D.barCOS+D.shopCOS); const barShopGP=rnd(barShopInc-barShopCOS);
+  const barShopCOSpct=barShopInc?rnd(barShopCOS/barShopInc):0;
+  [['Shop & Bar (Perpetual)',barShopInc,barShopCOS,barShopGP,barShopCOSpct,0.40],
+   ['Food (Periodic)',D.foodInc,D.foodCOS,D.foodGP,D.foodInc?rnd(D.foodCOS/D.foodInc):0,0.30]]
+  .forEach(([lbl,inc,cos,gp,cpct,bud],i)=>{
+    const bg=i%2===0?XL.LT2:XL.WH;
+    const status=inc===0?'—':(cpct<=bud?'🟢 ON TRACK':(cpct<=bud+0.02?'🟡 WATCH':'🔴 OVER'));
+    [[2,lbl,null,'left'],[5,inc,R0,'right'],[7,cos,R0,'right'],[9,gp,R0,'right'],
+     [11,cpct,PCT,'right'],[13,bud,PCT,'right'],[15,inc?rnd(cpct-bud):0,PCT,'right'],[17,status,null,'center']]
+    .forEach(([c,v,fmt,h])=>setC(ws,r,c,mkCell(typeof v==='number'?rnd(v):v,false,XL.BK,bg,h,fmt)));
+    rowH(ws,r,18); r++;
+  });
+
+  // COLUMN HEADERS for detail rows
+  const CH=[['',2],['OPENING\nSTOCK (R)',3],['PURCHASES\n(R)',4],['TRANSFER\nIN (R)',5],['TRANSFER\nOUT (R)',6],
+            ['ISSUE\nOUT (R)',7],['CLOSING\nSTOCK (R)',8],['INCOME\n(R)',9],['COS\nUSAGE (R)',10],
+            ['ACTUAL\nCOS%',11],['BUDGET\nCOS%',12],['BUDGET\nCOS (R)',13],['COS\nDIFF (R)',14],
+            ['VARIANCE\nAMT (R)',15],['VARIANCE\n%',16],['WRITE-OFFS\n(−ve)',17],['GROSS\nPROFIT (R)',18]];
   hdrRow(ws,r,CH,XL.DK); rowH(ws,r,36); r++;
 
-  // Helper: write one journal data row
-  // varAmt from SEMPa; budPct = target (or null); writOff = negative number or null
-  function jRow(lbl,op,pu,xin,xout,iss,cl,inc,varAmt,budPct,woff,indent,italic){
-    const bg = r%2===0 ? XL.LT2 : XL.WH;
-    const cos = rnd((op||0)+(pu||0)+(xin||0)-(xout||0)-(iss||0)-(cl||0));
-    const cosPct = inc ? rnd(cos/inc) : null;
-    const budCosR = (inc && budPct!=null) ? rnd(inc*budPct) : null;
-    const cosDiff = (budCosR!=null) ? rnd(budCosR-cos) : null;
-    const varPct = (varAmt!=null && cl) ? rnd(varAmt/cl) : null;
-    const gp = inc ? rnd(inc-cos) : null;
-    const l = indent ? '  '+lbl : lbl;
+  function jRow(lbl,op,pu,xin,xout,iss,cl,inc,varAmt,budPct,woff,isSubrow){
+    const bg=isSubrow?(r%2===0?XL.LT2:XL.WH):(r%2===0?XL.LT2:XL.WH);
+    const cos=rnd((op||0)+(pu||0)+(xin||0)-(xout||0)-(iss||0)-(cl||0));
+    const cosPct=inc?rnd(cos/inc):null;
+    const budCosR=(inc&&budPct!=null)?rnd(inc*budPct):null;
+    const cosDiff=budCosR!=null?rnd(budCosR-cos):null;
+    const varPct=(varAmt!=null&&cl)?rnd(varAmt/cl):null;
+    const gp=inc?rnd(inc-cos):null;
     [
-      [2,l,null,'left',false,italic?XL.SLT:XL.BK],
-      [3,op,R0,'right',false,'0070C0'],
-      [4,pu,R0,'right',false,'0070C0'],
-      [5,xin,R0,'right',false,'0070C0'],
-      [6,xout,R0,'right',false,'0070C0'],
-      [7,iss,R0,'right',false,'0070C0'],
-      [8,cl,R0,'right',false,'0070C0'],
+      [2,isSubrow?'    '+lbl:lbl,null,'left',false,isSubrow?XL.SLT:XL.BK],
+      [3,op,R0,'right',false,'0070C0'],[4,pu,R0,'right',false,'0070C0'],
+      [5,xin,R0,'right',false,'0070C0'],[6,xout,R0,'right',false,'0070C0'],
+      [7,iss,R0,'right',false,'0070C0'],[8,cl,R0,'right',false,'0070C0'],
       [9,inc,R0,'right',false,'0070C0'],
       [10,cos,R0,'right',false,cos<0?XL.RED:XL.BK],
       [11,cosPct,PCT,'right',false,cosPct!=null&&cosPct<0?XL.RED:XL.BK],
       [12,budPct,PCT,'right',false,'0070C0'],
-      [13,budCosR,R0,'right',false,XL.BK],
-      [14,cosDiff,R0,'right',false,XL.BK],
+      [13,budCosR,R0,'right',false,XL.BK],[14,cosDiff,R0,'right',false,XL.BK],
       [15,varAmt,R0,'right',false,varAmt!=null&&varAmt<0?XL.RED:XL.BK],
       [16,varPct,PCT,'right',false,varPct!=null&&varPct<0?XL.RED:XL.BK],
       [17,woff,R0,'right',false,'0070C0'],
       [18,gp,R0,'right',false,gp!=null&&gp<0?XL.RED:XL.BK],
     ].forEach(([c,v,fmt,h,bold,fg])=>{
-      if(v===null||v===undefined){ setC(ws,r,c,mkCell('',false,XL.BK,bg,h)); return; }
+      if(v===null||v===undefined){setC(ws,r,c,mkCell('',false,XL.BK,bg,h));return;}
       setC(ws,r,c,mkCell(typeof v==='number'?rnd(v):v,bold,fg,bg,h,fmt));
     });
-    rowH(ws,r,17); r++;
-    return {op:op||0,pu:pu||0,xin:xin||0,xout:xout||0,iss:iss||0,cl:cl||0,inc:inc||0,cos,gp:gp||0,varAmt:varAmt||0,woff:woff||0};
+    rowH(ws,r,isSubrow?16:17); r++;
+    return {op:op||0,pu:pu||0,xin:xin||0,xout:xout||0,iss:iss||0,cl:cl||0,inc:inc||0,
+            cos,gp:gp||0,varAmt:varAmt||0,woff:woff||0,budPct:budPct||0};
   }
 
-  // Total row — accepts array of row result objects
-  function jTotal(lbl,rows,budPct,bg){
-    bg=bg||XL.TOTBG;
-    const T={op:0,pu:0,xin:0,xout:0,iss:0,cl:0,inc:0,cos:0,gp:0,varAmt:0};
-    rows.forEach(rv=>{ Object.keys(T).forEach(k=>T[k]=rnd((T[k]||0)+(rv[k]||0))); });
+  function jTotal(lbl,rows,budPct,darkBg){
+    const bg=darkBg?XL.DK:XL.TOTBG; const fg=darkBg?XL.HDRTXT:XL.BK;
+    const T={op:0,pu:0,xin:0,xout:0,iss:0,cl:0,inc:0,cos:0,gp:0,varAmt:0,woff:0};
+    rows.forEach(rv=>Object.keys(T).forEach(k=>T[k]=rnd((T[k]||0)+(rv[k]||0))));
     const cosPct=T.inc?rnd(T.cos/T.inc):null;
     const budCosR=(T.inc&&budPct!=null)?rnd(T.inc*budPct):null;
     const cosDiff=budCosR!=null?rnd(budCosR-T.cos):null;
-    const varPct=(T.cl)?rnd(T.varAmt/T.cl):null;
+    const varPct=T.cl?rnd(T.varAmt/T.cl):null;
     const gpPct=T.inc?rnd(T.gp/T.inc):null;
-    [
-      [2,lbl,null,'left',true,XL.BK],
-      [3,T.op,R0,'right',true,XL.BK],[4,T.pu,R0,'right',true,XL.BK],
-      [5,T.xin,R0,'right',true,XL.BK],[6,T.xout,R0,'right',true,XL.BK],
-      [7,T.iss,R0,'right',true,XL.BK],[8,T.cl,R0,'right',true,XL.BK],
-      [9,T.inc,R0,'right',true,XL.BK],[10,T.cos,R0,'right',true,T.cos<0?XL.RED:XL.BK],
-      [11,cosPct,PCT,'right',true,cosPct!=null&&cosPct<0?XL.RED:XL.BK],
-      [13,budCosR,R0,'right',true,XL.BK],[14,cosDiff,R0,'right',true,XL.BK],
-      [15,T.varAmt,R0,'right',true,T.varAmt<0?XL.RED:XL.BK],
-      [16,varPct,PCT,'right',true,varPct!=null&&varPct<0?XL.RED:XL.BK],
-      [18,T.gp,R0,'right',true,T.gp<0?XL.RED:XL.BK],
-    ].forEach(([c,v,fmt,h,bold,fg])=>{
-      if(v===null||v===undefined){ setC(ws,r,c,mkCell('',true,XL.BK,bg,h)); return; }
-      const cell=mkCell(typeof v==='number'?rnd(v):v,bold,fg,bg,h,fmt);
+    [[2,lbl,null,'left'],[3,T.op,R0,'right'],[4,T.pu,R0,'right'],[5,T.xin,R0,'right'],
+     [6,T.xout,R0,'right'],[7,T.iss,R0,'right'],[8,T.cl,R0,'right'],[9,T.inc,R0,'right'],
+     [10,T.cos,R0,'right'],[11,cosPct,PCT,'right'],[13,budCosR,R0,'right'],[14,cosDiff,R0,'right'],
+     [15,T.varAmt,R0,'right'],[16,varPct,PCT,'right'],[17,T.woff,R0,'right'],[18,T.gp,R0,'right']]
+    .forEach(([c,v,fmt,h])=>{
+      if(v===null||v===undefined){setC(ws,r,c,mkCell('',true,fg,bg,h));return;}
+      const cell=mkCell(typeof v==='number'?rnd(v):v,true,fg,bg,h,fmt);
       cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}};
       setC(ws,r,c,cell);
     });
-    rowH(ws,r,20); r++;
+    rowH(ws,r,darkBg?22:20); r++;
     return T;
   }
 
-  // ─── SECTION 1: PERPETUAL — BAR & SHOP ──────────────────────────────────
-  secHdr(ws,r,'PERPETUAL STOCK SYSTEM  —  BAR & SHOP (Theoretical stock, variance tracked monthly)',XL.DK,2,cols); r++;
+  // ── PERPETUAL SECTION ──────────────────────────────────────────────────
+  secHdr(ws,r,'  PERPETUAL STOCK SYSTEM  —  Bar & Shop  (theoretical stock, variance tracked monthly)',XL.DK,2,cols); r++;
 
-  const xferIn  = D.xfer ? D.xfer.in  : {};
-  const xferOut = D.xfer ? D.xfer.out : {};
+  const xfIn=D.xfer?D.xfer.in:{};
+  const xfOut=D.xfer?D.xfer.out:{};
+  const barCDissues=D.issues?rnd(Object.entries(D.issues).filter(([k])=>k.toLowerCase().includes('coldrink')).reduce((a,[,v])=>a+v,0)):0;
 
-  const rCD = jRow('BAR COLDRINK (Bar Main Storage)',
-    D.openBarCD,
-    D.barCDpurch,
-    rnd(xferIn['Bar Main Storage']||0),
-    rnd(xferOut['Bar Main Storage']||0),
-    D.barCDissues||0,
-    D.barCDclose,
-    D.barCDinc,
-    D.barCDvariance||null,
-    0.35, null);
-
-  const rLQ = jRow('BAR LIQUOR (Bar Front)',
-    D.openBarLQ,
-    D.barLQpurch,
-    rnd(xferIn['Bar Front']||0),
-    rnd(xferOut['Bar Front']||0),
-    D.barLQwriteoff||0,
-    D.barLQclose,
-    D.barLQinc,
-    D.barLQvariance||null,
-    0.25, -(D.barLQwriteoff||0)||null);
-
-  const rSH = jRow('SHOP SALES (Summerplace Shop)',
-    D.openShop,
-    D.shopPurch,
-    0, 0, 0,
-    D.shopClose,
-    D.shopInc,
-    D.shopVariance||null,
-    0.50, null);
-
-  // Spacer
-  rowH(ws,r,5); r++;
-  const totPerp = jTotal('SHOP & BAR TOTAL (Perpetual System)',[rCD,rLQ,rSH],null,XL.TOTBG);
+  const rCD=jRow('BAR COLDRINK (Bar Main Storage)',D.openBarCD,D.barCDpurch,
+    rnd(xfIn['Bar Main Storage']||0),rnd(xfOut['Bar Main Storage']||0),barCDissues,
+    D.barCDclose,D.barCDinc,D.barCDvariance,0.4,'');
+  const rLQ=jRow('BAR LIQUOR (Bar Front)',D.openBarLQ,D.barLQpurch,
+    rnd(xfIn['Bar Front']||0),rnd(xfOut['Bar Front']||0),D.barLQwriteoff,
+    D.barLQclose,D.barLQinc,D.barLQvariance,0.4,-(D.barLQwriteoff||0)||'');
+  const rSH=jRow('SHOP SALES (Summerplace Shop)',D.openShop,D.shopPurch,0,0,0,
+    D.shopClose,D.shopInc,D.shopVariance,0.5,'');
+  rowH(ws,r,4); r++;
+  const totPerp=jTotal('SHOP & BAR TOTAL (Perpetual System)',[rCD,rLQ,rSH],null,false);
+  rowH(ws,r,4); r++;
 
   // EVENTS
-  rowH(ws,r,8); r++;
-  merge(ws,r,2,r,cols);
-  for(let c=1;c<=cols+1;c++) setC(ws,r,c,mkCell('',true,XL.HDRTXT,'7030A0','left'));
-  setC(ws,r,2,mkCell('  SUMMERPLACE EVENTS  (no events data this month — rows ready for future months)',true,XL.HDRTXT,'7030A0','left'));
-  rowH(ws,r,18); r++;
-
-  const rEL = jRow('Events Bar Liquor',0,0,0,0,0,0,0,null,0.40,null);
-  const rEC = jRow('Events Bar Coldrinks',0,0,0,0,0,0,0,null,0.40,null);
-  const rEF = jRow('Events Food',0,0,0,0,0,0,0,null,0.40,null);
+  secHdr(ws,r,'  SUMMERPLACE EVENTS  (no events data this month — rows ready for future months)','7030A0',2,cols); r++;
+  const rEL=jRow('Events Bar Liquor',0,0,0,0,0,0,0,null,0.4,'');
+  const rEC=jRow('Events Bar Coldrinks',0,0,0,0,0,0,0,null,0.4,'');
+  const rEF=jRow('Events Food',0,0,0,0,0,0,0,null,0.4,'');
   rowH(ws,r,4); r++;
-  jTotal('EVENTS REVENUE TOTAL',[rEL,rEC,rEF],null,XL.TOTBG);
-
-  // PERPETUAL GRAND
+  jTotal('EVENTS REVENUE TOTAL',[rEL,rEC,rEF],null,false);
   rowH(ws,r,4); r++;
+
+  // Perpetual grand total (dark)
   for(let c=1;c<=cols+1;c++) setC(ws,r,c,mkCell('',false,XL.HDRTXT,XL.DK,'left'));
   rowH(ws,r,4); r++;
-  jTotal('TOTAL FOOD & BEV — PERPETUAL',[rCD,rLQ,rSH,rEL,rEC,rEF],null,XL.DK);
-  // re-colour that row dark
-  for(let c=1;c<=cols+1;c++){
-    const addr=XLSX.utils.encode_cell({r:r-2,c:c-1});
-    if(ws[addr]) ws[addr].s={...(ws[addr].s||{}),fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF617D2F'}},font:{...(ws[addr].s?.font||{}),color:{argb:'FFFFFFFF'},bold:true,name:'Calibri',sz:10}};
-  }
+  jTotal('TOTAL FOOD & BEV — PERPETUAL',[rCD,rLQ,rSH,rEL,rEC,rEF],null,true);
+  rowH(ws,r,8); r++;
 
-  // ─── SECTION 2: PERIODIC — FOOD ─────────────────────────────────────────
-  rowH(ws,r,10); r++;
-  secHdr(ws,r,'PERIODIC STOCK SYSTEM  —  FOOD (Consumption method — COS = total used in period)',XL.DK,2,cols); r++;
+  // ── PERIODIC SECTION ──────────────────────────────────────────────────
+  secHdr(ws,r,'  PERIODIC STOCK SYSTEM  —  Food  (consumption method — COS = total used in period)',XL.DK,2,cols); r++;
 
-  const rMS = jRow('Main Store Food (Main Storage)',
-    D.openFood * 0.5,
-    D.foodPurchMain,
-    rnd(xferIn['Main Storage']||0),
-    rnd(xferOut['Main Storage']||0),
-    0,
-    D.closeMain,
-    0,
-    D.mainVariance||null,
-    null, null);
+  const issueTotal=rnd(Object.values(D.issues||{}).reduce((a,v)=>a+v,0));
+  const guestSupp=rnd(D.issues?D.issues['Guests Supplies Summerplace']||D.issues['Guests Supplies']||0:0);
+  const staffMeals=rnd(D.issues?D.issues['Staff Lunch/Dinner']||D.issues['Staff Lunch']||0:0);
+  const barGarnish=rnd(D.issues?D.issues['Bar - Garnish']||D.issues['Bar Garnish']||0:0);
+  const weddingTaste=rnd(D.issues?D.issues['Wedding tastings']||D.issues['Wedding Tastings']||0:0);
+  const events=rnd(D.issues?D.issues['Events,Conferences and Weddings']||D.issues['Events, Conferences & Weddings']||0:0);
+  const gameDrive=rnd(D.issues?D.issues['Game Drive Snacks']||0:0);
+  const writeOff=rnd(D.issues?D.issues['Stock Write Off']||0:0);
+  const kitchenIssues=rnd(staffMeals+barGarnish+weddingTaste+events+gameDrive+writeOff);
 
-  const rKF = jRow('Food Sales (Kitchen Front)',
-    D.openFood * 0.5,
-    D.foodPurchKitchen,
-    rnd(xferIn['Kitchen Front']||0),
-    rnd(xferOut['Kitchen Front']||0),
-    rnd((D.issues['Staff Lunch/Dinner']||D.issues['Staff Lunch'] ||D.issues['Staff Dinner']||D.issues['Staff Meals']||0)+
-        (D.issues['Events, Conferences & Weddings']||D.issues['Events']||0)+
-        (D.issues['Wedding Tastings']||0)+
-        (D.issues['Game Drive Snacks']||0)+
-        (D.issues['Bar Garnish']||D.issues['Bar Garnish (from Kitchen)']||0)),
-    D.closeKitchen,
-    D.foodInc,
-    D.kitchenVariance||null,
-    0.30, null);
-
-  // Guests Supplies — own line
-  const gsAmt = rnd(D.issues['Guests Supplies Summerplace']||D.issues['Guest Supplies']||D.issues['Guests Supplies']||0);
-  if(gsAmt > 0){
-    jRow('  — Guests Supplies Summerplace',null,null,null,null,gsAmt,null,null,null,null,null,true,true);
-  }
+  const rMS=jRow('Main Store Food (Main Storage)',0,D.foodPurchMain,
+    rnd(xfIn['Main Storage']||0),rnd(xfOut['Main Storage']||0),0,
+    D.closeMain,0,D.mainVariance,-0.05,'');
+  const rKF=jRow('Food Sales (Kitchen Front)',0,D.foodPurchKitchen,
+    rnd(xfIn['Kitchen Front']||0),rnd(xfOut['Kitchen Front']||0),kitchenIssues,
+    D.closeKitchen,D.foodInc,D.kitchenVariance,0.3,'');
 
   // Issue sub-rows
-  const issueKeys = Object.keys(D.issues).filter(k=>!k.toLowerCase().includes('guest'));
-  issueKeys.forEach(k=>{
-    const v=D.issues[k];
-    if(v>0) jRow('  — '+k,null,null,null,null,v,null,null,null,null,null,true,true);
+  [[guestSupp,'    — Guests Supplies Summerplace'],
+   [staffMeals,'    — Staff Lunch/Dinner'],
+   [barGarnish,'    — Bar - Garnish'],
+   [weddingTaste,'    — Wedding tastings'],
+   [events,'    — Events,Conferences and Weddings'],
+   [gameDrive,'    — Game Drive Snacks'],
+   [writeOff,'    — Stock Write Off']].forEach(([amt,lbl])=>{
+    if(!amt) return;
+    const bg=r%2===0?XL.LT2:XL.WH;
+    setC(ws,r,2,mkCell(lbl,false,XL.SLT,bg,'left'));
+    setC(ws,r,7,mkCell(rnd(amt),false,'0070C0',bg,'right',R0));
+    setC(ws,r,10,mkCell(rnd(-amt),false,XL.RED,bg,'right',R0));
+    rowH(ws,r,16); r++;
   });
 
   rowH(ws,r,4); r++;
   for(let c=1;c<=cols+1;c++) setC(ws,r,c,mkCell('',false,XL.HDRTXT,XL.DK,'left'));
   rowH(ws,r,4); r++;
-  jTotal('FOOD TOTAL (Periodic — Main Storage + Kitchen Front)',[rMS,rKF],0.30,XL.DK);
-  for(let c=1;c<=cols+1;c++){
-    const addr=XLSX.utils.encode_cell({r:r-2,c:c-1});
-    if(ws[addr]) ws[addr].s={...(ws[addr].s||{}),fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF617D2F'}},font:{...(ws[addr].s?.font||{}),color:{argb:'FFFFFFFF'},bold:true,name:'Calibri',sz:10}};
-  }
+  jTotal('FOOD TOTAL (Periodic — Main Storage + Kitchen Front)',[rMS,rKF],null,true);
+  rowH(ws,r,8); r++;
 
-  // ─── ISSUES BREAKDOWN TABLE ───────────────────────────────────────────────
-  rowH(ws,r,10); r++;
-  secHdr(ws,r,'ISSUES & WRITE-OFFS BREAKDOWN  (Excl. Simone & Dave Owner Account — tracked separately)',XL.DK,2,cols); r++;
+  // ── ISSUES BREAKDOWN ──────────────────────────────────────────────────
+  secHdr(ws,r,'  ISSUES & WRITE-OFFS BREAKDOWN  (excl. Simone & Dave Owner Account — tracked separately)',XL.DK,2,cols); r++;
   hdrRow(ws,r,[['ISSUE REASON',2],['AMOUNT (R)',3],['NOTES',4]],XL.DK);
   merge(ws,r,4,r,cols); rowH(ws,r,18); r++;
 
-  // Guests supplies first
-  if(gsAmt>0){
+  const issueDetail=[
+    ['Guests Supplies Summerplace',guestSupp,'Lodge guest amenities — own category (not in food COS)'],
+    ['Staff Lunch/Dinner',staffMeals,''],
+    ['Bar - Garnish',barGarnish,''],
+    ['Wedding tastings',weddingTaste,''],
+    ['Events,Conferences and Weddings',events,''],
+    ['Game Drive Snacks',gameDrive,''],
+    ['Stock Write Off',writeOff,'Enter as negative in Write-offs column above'],
+  ];
+  issueDetail.forEach(([lbl,amt,note],i)=>{
+    if(!amt) return;
     const bg=r%2===0?XL.LT2:XL.WH;
-    setC(ws,r,2,mkCell('Guests Supplies Summerplace',false,XL.BK,bg,'left'));
-    setC(ws,r,3,mkCell(gsAmt,false,'0070C0',bg,'right',R0));
+    setC(ws,r,2,mkCell(lbl,false,XL.BK,bg,'left'));
+    setC(ws,r,3,mkCell(rnd(amt),false,'0070C0',bg,'right',R0));
     merge(ws,r,4,r,cols);
-    setC(ws,r,4,mkCell('Lodge guest amenities — own category (not in food COS)',false,XL.SLT,bg,'left',null,true));
-    rowH(ws,r,17); r++;
-  }
-
-  issueKeys.forEach((k,i)=>{
-    const v=D.issues[k]; if(!v||v<=0) return;
-    const bg=r%2===0?XL.LT2:XL.WH;
-    setC(ws,r,2,mkCell(k,false,XL.BK,bg,'left'));
-    setC(ws,r,3,mkCell(rnd(v),false,'0070C0',bg,'right',R0));
-    merge(ws,r,4,r,cols);
-    const note=k.toLowerCase().includes('write')?'Enter as negative in Write-offs column above':'';
     setC(ws,r,4,mkCell(note,false,XL.SLT,bg,'left',null,true));
     rowH(ws,r,17); r++;
   });
-
-  // Total issues
-  const totIss=rnd(D.foodIssues+(gsAmt||0));
+  // Total
   const cell=mkCell('TOTAL ISSUES (excl. Owner)',true,XL.BK,XL.TOTBG,'left');
   cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}};
   setC(ws,r,2,cell);
-  const cell2=mkCell(totIss,true,XL.BK,XL.TOTBG,'right',R0);
-  cell2.s.border=cell.s.border;
-  setC(ws,r,3,cell2);
+  const cell2=mkCell(rnd(issueTotal),true,XL.BK,XL.TOTBG,'right',R0);
+  cell2.s.border=cell.s.border; setC(ws,r,3,cell2);
   merge(ws,r,4,r,cols);
-  setC(ws,r,4,mkCell('Owner account (R '+rnd(D.ownerTotal||0).toLocaleString('en-ZA',{minimumFractionDigits:0})+') excluded — Simone & Dave Cost Account',false,XL.SLT,XL.TOTBG,'left',null,true));
+  setC(ws,r,4,mkCell('Owner account (R '+(Math.round(D.ownerTotal||0)).toLocaleString('en-ZA')+','+String(((D.ownerTotal||0)%1).toFixed(2)).slice(2)+') excluded — Simone & Dave Cost Account',false,XL.SLT,XL.TOTBG,'left',null,true));
   rowH(ws,r,20); r++;
 
   setRef(ws,r+1,cols+1);
@@ -1241,28 +1208,30 @@ function buildCOS(wb,D,period){
 
 function buildVariance(wb,D,period){
   const ws={};ws['!merges']=[];ws['!rows']=[];
-  colW(ws,[2,28,13,13,13,10,10,30,2]);
+  colW(ws,[2,28,14,14,12,10,14,24,2]);
   const cols=8;
-  titleBlock(ws,'SUMMERPLACE GAME RESERVE','STOCK VARIANCE ANALYSIS  |  '+period,
-    'Variance = Actual On Hand − Theoretical Expected  |  Negative = Less Stock Than Expected',cols);
+  titleBlock(ws,'  SUMMERPLACE GAME RESERVE','  Stock Variance Analysis  |  '+period,
+    '  Variance = Actual On Hand − Theoretical Expected   •   Positive = Surplus / extra stock   •   Negative = Shortage / shrinkage   •   🟢 ≤2%   🟡 ≤5%   🔴 >5%',cols);
   let r=6;
-  hdrRow(ws,r,[['STOCK CATEGORY',2],['ACTUAL ON HAND (R)',3],['THEORETICAL (R)',4],['VARIANCE (R)',5],['VAR %',6],['STATUS',7],['RECOMMENDED ACTION',8]],XL.DK);
+  hdrRow(ws,r,[['STOCK CATEGORY',2],['ACTUAL ON HAND (R)',3],['THEORETICAL (R)',4],['VARIANCE (R)',5],['VAR %',6],['STATUS',7],['NOTES',8]],XL.DK);
   rowH(ws,r,26); r++;
 
   D.varianceSections.forEach(sec=>{
-    secHdr(ws,r,sec.title,XL.MD,2,cols); r++;
+    secHdr(ws,r,'  '+sec.title,XL.MD,2,cols); r++;
     sec.items.forEach(item=>{
       const isT=item.cat==='TOTAL';
       const v=rnd(item.actual-item.theo);
-      const vp=item.theo?rnd(v/item.theo):0;
-      const bg=isT?XL.SUBBG:(v<-2000?XL.REDBG:(v<-500?XL.AMBBG:XL.LT2));
-      const status=v<-2000?'🔴 URGENT':(v<-500?'⚠️ INVESTIGATE':(v>1000?'⚠️ REVIEW':'✅ OK'));
+      const vp=item.theo?rnd(v/item.theo):(item.actual?1:0);
+      const vpAbs=Math.abs(vp);
+      const bothZero=item.actual===0&&item.theo===0;
+      const status=bothZero?'—':(isT?(vpAbs<=0.02?'🟢 NET OK':(v>0?'🟡 NET SURPLUS':'🔴 NET SHORTAGE')):(vpAbs<=0.02?'🟢 OK':(vpAbs<=0.05?'🟡 REVIEW':'🔴 URGENT')));
+      const bg=isT?XL.TOTBG:(vpAbs>0.05?XL.REDBG:(vpAbs>0.02?XL.AMBBG:XL.LT2));
       [[2,item.cat,null,'left'],[3,item.actual,R0,'right'],[4,item.theo,R0,'right'],
-       [5,v,R0,'right'],[6,vp,PCT,'right'],[7,item.status||status,null,'center'],[8,item.action||'',null,'left']]
+       [5,v,R0,'right'],[6,bothZero?null:vp,PCT,'right'],[7,status,null,'center'],[8,item.action||'',null,'left']]
       .forEach(([c,val,fmt,h])=>setC(ws,r,c,mkCell(typeof val==='number'?rnd(val):val,isT,c===5&&v<0?XL.RED:XL.BK,bg,h,fmt,c===8)));
       rowH(ws,r,isT?20:16); r++;
     });
-    rowH(ws,r,4); r++;
+    rowH(ws,r,5); r++;
   });
 
   setRef(ws,r+1,cols+1);
@@ -1271,25 +1240,31 @@ function buildVariance(wb,D,period){
 
 function buildSupplier(wb,D,period){
   const ws={};ws['!merges']=[];ws['!rows']=[];
-  colW(ws,[2,32,13,8,13,10,22,2]);
+  colW(ws,[2,32,14,9,14,10,28,2]);
   const cols=7;
-  titleBlock(ws,'SUMMERPLACE GAME RESERVE','SUPPLIER SPEND ANALYSIS  |  '+period,
-    'All goods received from SEMPa Goods Received report  |  Sorted by total spend',cols);
+  titleBlock(ws,'  SUMMERPLACE GAME RESERVE','  Supplier Spend Analysis  |  '+period,
+    '  All goods received from SEMPa Goods Received report (Excl VAT)   •   Ranked by total spend',cols);
   let r=6;
-  secHdr(ws,r,'SUPPLIER SPEND — RANKED BY VALUE',XL.DK,2,cols); r++;
+  secHdr(ws,r,'  SUPPLIER SPEND — RANKED BY VALUE',XL.DK,2,cols); r++;
   hdrRow(ws,r,[['SUPPLIER',2],['TOTAL SPEND (R)',3],['INVOICES',4],['AVG INVOICE (R)',5],['% OF TOTAL',6],['AREA SUPPLIED',7]],XL.DK);
   r++;
   const grand=D.suppliers.reduce((a,s)=>a+s.total,0);
   D.suppliers.forEach((s,i)=>{
     const bg=i%2===0?XL.WH:XL.LT2;
     [[2,s.name,null,'left'],[3,s.total,R0,'right'],[4,s.invoices,N0,'right'],
-     [5,rnd(s.total/s.invoices),R0,'right'],[6,grand?rnd(s.total/grand):0,PCT,'right'],[7,s.area,null,'left']]
+     [5,s.invoices?rnd(s.total/s.invoices):0,R0,'right'],
+     [6,grand?rnd(s.total/grand):0,PCT,'right'],[7,s.area,null,'left']]
     .forEach(([c,v,fmt,h])=>setC(ws,r,c,mkCell(typeof v==='number'?rnd(v):v,false,XL.BK,bg,h,fmt,c===7)));
     rowH(ws,r,17); r++;
   });
   const totInv=D.suppliers.reduce((a,s)=>a+s.invoices,0);
-  [[2,'TOTAL',null,'left'],[3,grand,R0,'right'],[4,totInv,N0,'right'],[6,1.0,PCT,'right']]
-  .forEach(([c,v,fmt,h])=>{ const cell=mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,XL.TOTBG,h,fmt); cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}}; setC(ws,r,c,cell); });
+  [[2,'TOTAL',null,'left'],[3,grand,R0,'right'],[4,totInv,N0,'right'],
+   [5,totInv?rnd(grand/totInv):0,R0,'right'],[6,1.0,PCT,'right']]
+  .forEach(([c,v,fmt,h])=>{
+    const cell=mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,XL.TOTBG,h,fmt);
+    cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}};
+    setC(ws,r,c,cell);
+  });
   rowH(ws,r,20);
   setRef(ws,r+1,cols+1);
   XLSX.utils.book_append_sheet(wb,ws,'🚚 Supplier Spend');
@@ -1297,59 +1272,68 @@ function buildSupplier(wb,D,period){
 
 function buildMenu(wb,D,period){
   const ws={};ws['!merges']=[];ws['!rows']=[];
-  colW(ws,[2,28,13,8,13,10,13,7,2]);
+  colW(ws,[2,24,14,9,13,10,13,10,2]);
   const cols=8;
-  titleBlock(ws,'SUMMERPLACE GAME RESERVE','MENU PERFORMANCE REPORT  |  '+period,
-    'Revenue by category from SEMPa Income Analysis  |  Budget column ready to fill in',cols);
+  titleBlock(ws,'  SUMMERPLACE GAME RESERVE','  Menu Performance Report  |  '+period,
+    '  Revenue by category from SEMPa Income Analysis   •   Budget column ready to fill in',cols);
   let r=6;
 
-  secHdr(ws,r,'🍽  FOOD MENU PERFORMANCE',XL.DK,2,cols); r++;
-  hdrRow(ws,r,[['MENU CATEGORY',2],['REVENUE\n(excl VAT)',3],['ITEMS\nSOLD',4],['AVG VALUE (R)',5],['% OF FOOD',6],['BUDGET (R)',7],['RANK',8]],XL.DK);
+  // FOOD
+  secHdr(ws,r,'  🍽  FOOD MENU PERFORMANCE',XL.DK,2,cols); r++;
+  hdrRow(ws,r,[['MENU CATEGORY',2],['REVENUE (excl VAT)',3],['ITEMS SOLD',4],['AVG VALUE (R)',5],['% OF FOOD',6],['BUDGET (R)',7],['RANK',8]],XL.DK);
   r++;
   const fTotal=D.foodMenuItems.reduce((a,m)=>a+m.rev,0);
+  const fItems=D.foodMenuItems.reduce((a,m)=>a+(m.items||0),0);
   D.foodMenuItems.forEach((m,i)=>{
     const bg=i%2===0?XL.WH:XL.LT2;
-    const rank=i<3?['🥇 #1','🥈 #2','🥉 #3'][i]:`#${i+1}`;
+    const rank=fTotal>0?('#'+D.foodMenuItems.filter(x=>x.rev>m.rev).length+1):'-';
     [[2,m.cat,null,'left'],[3,m.rev,R0,'right'],[4,m.items||0,N0,'right'],
-     [5,m.items?rnd(m.rev/m.items):0,R0,'right'],[6,fTotal?rnd(m.rev/fTotal):0,PCT,'right'],[8,rank,null,'center']]
+     [5,m.items?rnd(m.rev/m.items):0,R0,'right'],[6,fTotal?rnd(m.rev/fTotal):0,PCT,'right'],
+     [8,'#'+(i+1),null,'center']]
     .forEach(([c,v,fmt,h])=>setC(ws,r,c,mkCell(typeof v==='number'?rnd(v):v,false,XL.BK,bg,h,fmt)));
-    // Budget input cell
-    const bAddr=XLSX.utils.encode_cell({r:r-1,c:6});
-    ws[bAddr]={t:'z',v:'',s:{font:{name:'Calibri',color:{argb:'FF'+XL.MD},sz:9,italic:true},fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF'+'DEEAF1'}},alignment:{horizontal:'center'}}};
     rowH(ws,r,17); r++;
   });
-  [[2,'TOTAL FOOD REVENUE',null,'left'],[3,fTotal,R0,'right'],[6,1.0,PCT,'right']]
-  .forEach(([c,v,fmt,h])=>{ const cell=mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,XL.TOTBG,h,fmt); cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}}; setC(ws,r,c,cell); });
+  [[2,'TOTAL FOOD REVENUE',null,'left'],[3,fTotal,R0,'right'],[4,fItems,N0,'right'],[6,1.0,PCT,'right']]
+  .forEach(([c,v,fmt,h])=>{
+    const cell=mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,XL.TOTBG,h,fmt);
+    cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}};
+    setC(ws,r,c,cell);
+  });
   rowH(ws,r,20); r+=2;
 
-  secHdr(ws,r,'🍷  BAR PERFORMANCE',XL.DK,2,cols); r++;
-  hdrRow(ws,r,[['BAR CATEGORY',2],['REVENUE\n(excl VAT)',3],['% OF BAR',4],['RANK',5],['NOTES',6]],XL.DK);
+  // BAR
+  secHdr(ws,r,'  🍷  BAR PERFORMANCE',XL.DK,2,cols); r++;
+  hdrRow(ws,r,[['BAR CATEGORY',2],['REVENUE (excl VAT)',3],['% OF BAR',4],['RANK',5],['NOTES',6]],XL.DK);
   r++;
   const bTotal=D.barItems.reduce((a,m)=>a+m.rev,0);
   D.barItems.forEach((m,i)=>{
     const bg=i%2===0?XL.WH:XL.LT2;
-    const rank=i<3?['🥇 #1','🥈 #2','🥉 #3'][i]:`#${i+1}`;
-    [[2,m.cat,null,'left'],[3,m.rev,R0,'right'],[4,bTotal?rnd(m.rev/bTotal):0,PCT,'right'],[5,rank,null,'center'],[6,m.note||'',null,'left']]
+    [[2,m.cat,null,'left'],[3,m.rev,R0,'right'],[4,bTotal?rnd(m.rev/bTotal):0,PCT,'right'],
+     [5,'#'+(i+1),null,'center'],[6,m.note||'',null,'left']]
     .forEach(([c,v,fmt,h])=>setC(ws,r,c,mkCell(typeof v==='number'?rnd(v):v,false,XL.BK,bg,h,fmt,c===6)));
     rowH(ws,r,17); r++;
   });
   [[2,'TOTAL BAR REVENUE',null,'left'],[3,bTotal,R0,'right'],[4,1.0,PCT,'right']]
-  .forEach(([c,v,fmt,h])=>{ const cell=mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,XL.TOTBG,h,fmt); cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}}; setC(ws,r,c,cell); });
+  .forEach(([c,v,fmt,h])=>{
+    const cell=mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,XL.TOTBG,h,fmt);
+    cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}};
+    setC(ws,r,c,cell);
+  });
   rowH(ws,r,20); r+=2;
 
-  // SHOP INCOME
-  secHdr(ws,r,'🛍  SHOP INCOME',XL.DK,2,cols); r++;
+  // SHOP
+  secHdr(ws,r,'  🛍  SHOP INCOME',XL.DK,2,cols); r++;
+  const bg2=XL.LT2;
   [[2,'SHOP REVENUE (excl VAT)',null,'left'],[3,D.shopInc,R0,'right']]
-  .forEach(([c,v,fmt,h])=>{ const cell=mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,XL.LT2,h,fmt); cell.s.border={top:{style:'medium'},bottom:{style:'medium'},left:{style:'thin'},right:{style:'thin'}}; setC(ws,r,c,cell); });
+  .forEach(([c,v,fmt,h])=>setC(ws,r,c,mkCell(typeof v==='number'?rnd(v):v,true,XL.BK,bg2,h,fmt)));
   rowH(ws,r,18);
 
   setRef(ws,r+1,cols+1);
   XLSX.utils.book_append_sheet(wb,ws,'🍴 Menu Performance');
 }
 
-// ═══════════════════════════════════════════════════
-// MAIN GENERATE
-// ═══════════════════════════════════════════════════
+
+
 async function generate(){
   showErr('');
   showOverlay(true);
@@ -1564,7 +1548,7 @@ async function generate(){
       `<div class="kpi-box"><div class="kpi-lbl">Bar Income</div><div class="kpi-val">${fmtR(barInc)}</div></div>`+
       `<div class="kpi-box"><div class="kpi-lbl">Shop Income</div><div class="kpi-val">${fmtR(shopInc)}</div></div>`+
       `<div class="kpi-box"><div class="kpi-lbl">F&B COS</div><div class="kpi-val ${fbCOS<0?'neg':''}">${fmtR(fbCOS)}</div></div>`;
-    document.getElementById('sucSub').textContent=period+' F&B Cost of Sales report — 5 tabs (Dashboard, COS Journal, Stock Variance, Supplier Spend, Menu Performance)';
+    document.getElementById('sucSub').textContent=period+' — Dashboard, COS Journal, Stock Variance, Supplier Spend & Menu Performance ready';
 
     setProgress(100,'Complete!');
     await new Promise(res=>setTimeout(res,500));
