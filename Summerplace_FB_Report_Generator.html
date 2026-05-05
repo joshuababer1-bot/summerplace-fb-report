@@ -313,6 +313,16 @@ body{
   font-size:13px;color:var(--red);margin-bottom:14px;
 }
 .err-banner.on{display:flex}
+.warn-banner{
+  display:none;flex-direction:column;gap:6px;
+  background:#FEF3C7;border:1.5px solid #F59E0B;
+  border-radius:var(--rsm);padding:12px 16px;
+  font-size:13px;color:#92400E;margin-bottom:14px;
+}
+.warn-banner.on{display:flex}
+.warn-banner h4{margin:0 0 4px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.warn-banner ul{margin:0;padding-left:20px}
+.warn-banner li{margin:2px 0;font-family:'DM Mono',monospace;font-size:12px;line-height:1.5}
 
 /* ── FOOTER ── */
 .footer{
@@ -563,6 +573,7 @@ body{
   <div class="card">
     <div class="generate-wrap">
       <div class="err-banner" id="errBanner"><span>⚠️</span><span id="errTxt"></span></div>
+      <div class="warn-banner" id="warnBanner"><h4><span>⚠️</span><span>Parser warnings — your report may be incomplete</span></h4><ul id="warnList"></ul></div>
       <button class="btn-gen" id="btnGen" onclick="generate()" disabled>
         <span style="font-size:20px">⚡</span> Generate F&B Report
       </button>
@@ -632,6 +643,35 @@ function setProgress(pct, msg){
 }
 function showOverlay(on){ document.getElementById('progressOverlay').classList.toggle('on',on); }
 function showErr(msg){ const b=document.getElementById('errBanner'); document.getElementById('errTxt').textContent=msg; b.classList.toggle('on',!!msg); }
+function showWarnings(items){
+  const b=document.getElementById('warnBanner'); const ul=document.getElementById('warnList');
+  ul.innerHTML='';
+  if(!items||!items.length){ b.classList.remove('on'); return; }
+  for(const w of items){
+    const li=document.createElement('li');
+    li.textContent='• '+w;
+    ul.appendChild(li);
+  }
+  b.classList.add('on');
+}
+
+// Wraps a parser call so failures and empty results surface as warnings instead of silent zeros.
+function safeParse(name, fn, csv, warnings, sanityCheck){
+  if(!csv){ warnings.push(name+': no CSV provided'); return null; }
+  try {
+    const out = fn(csv);
+    if(out && out._error){ warnings.push(name+': '+out._error); }
+    if(sanityCheck){
+      const msg = sanityCheck(out);
+      if(msg) warnings.push(name+': '+msg);
+    }
+    return out;
+  } catch(err){
+    warnings.push(name+' threw: '+(err && err.message?err.message:String(err)));
+    console.error(name+' parse error', err);
+    return null;
+  }
+}
 
 function updateBtn(){
   const ok = REQUIRED.every(k=>files[k]);
@@ -690,24 +730,80 @@ function $R(v){
   return parseFloat(String(v).replace(/R/g,'').replace(/\s/g,'').replace(/,/g,'.').replace('--','-'))||0;
 }
 
+// Sanity check for Variance parser — produces a warning string or null
+function varSanity(o, expectedArea){
+  if(!o) return 'no result';
+  const issues=[];
+  if(o._rows===0) issues.push('parsed 0 product rows — closing stock and variance will be 0');
+  if(o.area!==expectedArea && o.area!=='Unknown') issues.push('storage area is "'+o.area+'" but slot expects "'+expectedArea+'" — wrong file uploaded?');
+  if(o.area==='Unknown') issues.push('could not detect Storage Area header');
+  // Any single category > R 1M is almost always a stock-take entry error
+  if(o.byCategory){
+    for(const k of Object.keys(o.byCategory)){
+      if(Math.abs(o.byCategory[k].variance)>1000000) issues.push('category "'+k+'" has variance R '+Math.round(o.byCategory[k].variance).toLocaleString()+' — likely a stock-take entry error');
+    }
+  }
+  return issues.length?issues.join('; '):null;
+}
+
+// Categories from "Income by Revenue Centres" that map to "Accommodation"
+const ACCOM_CATS = new Set(['Accommodation','Bushwillow Villa','Hideout Tent','Marula Villa','Rosemary Villa','Saringa Villa','Summergetti Camp','Summerhill','Summerview Villa','Yorks View Villa','Campsites','The Shed 1','The Shed 2','The Shed 3']);
+const ACTIVITY_CATS = new Set(['Activities','Events','New Wine','System']);
+
 function parseIncome(csv){
   const lines=csv.split('\n');
-  const hi=lines.findIndex(l=>l.includes('Product;Category'));
-  if(hi<0) return {food:0,bar:0,shop:0,accom:0,activities:0,total:0,byCode:{}};
-  const r={food:0,bar:0,shop:0,accom:0,activities:0,total:0,byCode:{}};
-  for(const line of lines.slice(hi+1)){
-    const p=line.split(';').map(s=>s.trim());
-    if(p.length<13||!p[0]||p[0].startsWith(';;')) continue;
-    if(p[0].startsWith('Total')) continue;
-    const cat=p[1]; const excl=$R(p[11]);
-    if(!excl) continue;
-    if(cat==='Food Menu')       r.food     +=excl;
-    else if(cat==='Bar Sales')  r.bar      +=excl;
-    else if(cat==='Shop')       r.shop     +=excl;
-    else if(cat==='Accommodation') r.accom +=excl;
-    else if(cat==='Activities') r.activities+=excl;
-    r.total+=excl;
-    const code=p[0]; r.byCode[code]=(r.byCode[code]||0)+excl;
+  // Format detection — old "Income Analysis" had 'Product;Category', new "Income by Revenue Centres" has Revenue Centre header
+  const oldHi=lines.findIndex(l=>l.includes('Product;Category'));
+  const newHi=lines.findIndex(l=>l.includes('Revenue Centre')&&l.includes('Total Sales (Excl.)'));
+  const r={food:0,bar:0,shop:0,accom:0,activities:0,total:0,byCode:{},bySubCategory:{},_format:'unknown',_rows:0};
+  if(oldHi<0 && newHi<0){
+    r._error='Could not find header row — neither "Product;Category" nor "Revenue Centre … Total Sales (Excl.)". Is this an Income CSV?';
+    return r;
+  }
+  if(newHi>=0){
+    // NEW: Income by Revenue Centres — 16 cols
+    // 0=Revenue Centre  5=Category  6=Sub Category  7=Product  12=Total Sales (Excl.)
+    r._format='Income by Revenue Centres';
+    for(const line of lines.slice(newHi+1)){
+      const p=line.split(';').map(s=>s.trim());
+      if(p.length<13) continue;
+      if(!p[5]||p[0].startsWith('Total')||p[5].startsWith('Total')) continue;
+      const cat=p[5]; const sub=p[6]||'Other'; const product=p[7]||p[5]; const excl=$R(p[12]);
+      if(!excl) continue;
+      let bucket=cat;
+      if(ACCOM_CATS.has(cat)) bucket='Accommodation';
+      else if(ACTIVITY_CATS.has(cat)) bucket='Activities';
+      if(bucket==='Food Menu')       r.food     +=excl;
+      else if(bucket==='Bar Sales')  r.bar      +=excl;
+      else if(bucket==='Shop')       r.shop     +=excl;
+      else if(bucket==='Accommodation') r.accom +=excl;
+      else if(bucket==='Activities') r.activities+=excl;
+      r.total+=excl;
+      r.byCode[product]=(r.byCode[product]||0)+excl;
+      if(!r.bySubCategory[bucket]) r.bySubCategory[bucket]={};
+      r.bySubCategory[bucket][sub]=(r.bySubCategory[bucket][sub]||0)+excl;
+      r._rows++;
+    }
+  } else {
+    // OLD: Income Analysis — 13+ cols, p[1]=category, p[2]=sub, p[11]=excl, p[0]=code
+    r._format='Income Analysis (legacy)';
+    for(const line of lines.slice(oldHi+1)){
+      const p=line.split(';').map(s=>s.trim());
+      if(p.length<13||!p[0]||p[0].startsWith(';;')) continue;
+      if(p[0].startsWith('Total')) continue;
+      const cat=p[1]; const sub=p[2]||'Other'; const excl=$R(p[11]);
+      if(!excl) continue;
+      if(cat==='Food Menu')       r.food     +=excl;
+      else if(cat==='Bar Sales')  r.bar      +=excl;
+      else if(cat==='Shop')       r.shop     +=excl;
+      else if(cat==='Accommodation') r.accom +=excl;
+      else if(cat==='Activities') r.activities+=excl;
+      r.total+=excl;
+      const code=p[0]; r.byCode[code]=(r.byCode[code]||0)+excl;
+      if(!r.bySubCategory[cat]) r.bySubCategory[cat]={};
+      r.bySubCategory[cat][sub]=(r.bySubCategory[cat][sub]||0)+excl;
+      r._rows++;
+    }
   }
   Object.keys(r).forEach(k=>{ if(typeof r[k]==='number') r[k]=rnd(r[k]); });
   return r;
@@ -754,22 +850,65 @@ function parseIssued(csv){
 function parseVariance(csv){
   const lines=csv.split('\n');
   const areaLine=lines.find(l=>l.includes('Storage Area:'));
-  const area=areaLine?areaLine.split(':')[1].replace(/;.*/,'').trim():'Unknown';
+  const area=areaLine?areaLine.split(':').slice(1).join(':').replace(/;.*/,'').trim():'Unknown';
   let onHand=0,recorded=0,variance=0;
   const byCategory={};
   let inData=false;
+  let curCat='Uncategorized';
+  let isNewFormat=false;
+  let rowsParsed=0;
   for(const line of lines){
     const p=line.split(';').map(s=>s.trim());
-    if(line.includes('On Hand Cost')){inData=true;continue}
-    if(line.includes('Totals:')&&inData){
-      onHand=$R(p[1]); recorded=$R(p[2]); variance=$R(p[3]); break;
+    if(line.includes('On Hand Cost')){
+      inData=true;
+      // New format header has many more columns, with "Product Description;Date Recorded;Balance" preceding On Hand Cost
+      isNewFormat = line.includes('Product Description') && line.includes('Date Recorded');
+      continue;
     }
-    if(inData&&p[0]){
+    if(!inData) continue;
+    if(line.includes('Totals:')){
+      // OLD format: cost totals on this row at p[1..3]. NEW format has no Totals row — totals are summed.
+      if(!isNewFormat){
+        onHand=$R(p[1]); recorded=$R(p[2]); variance=$R(p[3]);
+      }
+      break;
+    }
+    if(!p[0]||p[0].startsWith(';;')) continue;
+    if(isNewFormat){
+      // Category header rows have only col 0 populated (cols 1, 6, 10, 18 empty)
+      const isCategoryRow = !p[1] && !p[6] && !p[10] && !p[18];
+      if(isCategoryRow){
+        curCat = p[0].replace(/\s*\*+\s*$/,'').trim() || 'Uncategorized';
+        if(!byCategory[curCat]) byCategory[curCat]={onHand:0,recorded:0,variance:0,products:0};
+        continue;
+      }
+      // Data row — pull cost values from new column positions
+      const oh=$R(p[6]); const rec=$R(p[10]); const vr=$R(p[18]);
+      if(oh||rec||vr){
+        if(!byCategory[curCat]) byCategory[curCat]={onHand:0,recorded:0,variance:0,products:0};
+        byCategory[curCat].onHand += oh;
+        byCategory[curCat].recorded += rec;
+        byCategory[curCat].variance += vr;
+        byCategory[curCat].products += 1;
+        onHand += oh; recorded += rec; variance += vr;
+        rowsParsed++;
+      }
+    } else {
+      // OLD format: each meaningful row is a category, costs at p[1..3]
       const oh=$R(p[1]); const rec=$R(p[2]); const vr=$R(p[3]);
-      if(oh||rec||vr) byCategory[p[0]]={onHand:oh,recorded:rec,variance:vr};
+      if(oh||rec||vr){
+        byCategory[p[0]]={onHand:oh,recorded:rec,variance:vr,products:1};
+        rowsParsed++;
+      }
     }
   }
-  return {area,onHand:rnd(onHand),recorded:rnd(recorded),variance:rnd(variance),byCategory};
+  // Drop empty buckets, round
+  Object.keys(byCategory).forEach(k=>{
+    const v=byCategory[k];
+    if(!v.onHand && !v.recorded && !v.variance && !v.products){ delete byCategory[k]; return; }
+    v.onHand=rnd(v.onHand); v.recorded=rnd(v.recorded); v.variance=rnd(v.variance);
+  });
+  return {area,onHand:rnd(onHand),recorded:rnd(recorded),variance:rnd(variance),byCategory,_format:isNewFormat?'new':'old',_rows:rowsParsed};
 }
 
 function parseTransfer(csv){
@@ -1336,6 +1475,8 @@ function buildMenu(wb,D,period){
 
 async function generate(){
   showErr('');
+  showWarnings([]);
+  const warnings=[];
   showOverlay(true);
   try {
     const month  = parseInt(document.getElementById('selMonth').value);
@@ -1350,25 +1491,32 @@ async function generate(){
     const openBarLQ = first?0:parseFloat(document.getElementById('oBarLQ').value)||0;
     const openShop  = first?0:parseFloat(document.getElementById('oShop').value)||0;
 
-    // Parse all CSVs
+    // Parse all CSVs (each parser is wrapped so silent failures surface)
     setProgress(10,'Parsing Income Analysis…');
-    const income = parseIncome(files['income'].content);
+    const income = safeParse('Income', parseIncome, files['income'].content, warnings,
+      o=>(!o||o.total===0)?'parsed 0 rows — revenue will all be R 0. Check the report type and column layout.':null) || {food:0,bar:0,shop:0,accom:0,activities:0,total:0,byCode:{},bySubCategory:{}};
     setProgress(18,'Parsing Goods Received…');
-    const goods  = parseGoods(files['goods'].content);
+    const goods  = safeParse('Goods Received', parseGoods, files['goods'].content, warnings,
+      o=>(!o||o.total===0)?'parsed 0 rows — purchases will be R 0.':null) || {byArea:{},total:0,suppliers:{}};
     setProgress(26,'Parsing Issued Stock…');
-    const issued = parseIssued(files['issued'].content);
+    const issued = safeParse('Issued Stock', parseIssued, files['issued'].content, warnings,
+      o=>(!o||o.total===0)?'parsed 0 rows — issues/staff meals/write-offs will be R 0.':null) || {byReason:{},total:0,ownerTotal:0};
     setProgress(34,'Parsing Stock Transfer…');
-    const xfer   = files['transfer']?parseTransfer(files['transfer'].content):{in:{},out:{}};
+    const xfer   = (files['transfer']?safeParse('Stock Transfer', parseTransfer, files['transfer'].content, warnings):null) || {in:{},out:{}};
     setProgress(42,'Parsing Variance — Main Storage…');
-    const vMain  = parseVariance(files['vMain'].content);
+    const vMain  = safeParse('Variance Main Storage', parseVariance, files['vMain'].content, warnings,
+      o=>varSanity(o,'Main Storage')) || {area:'Main Storage',onHand:0,recorded:0,variance:0,byCategory:{}};
     setProgress(48,'Parsing Variance — Kitchen Front…');
-    const vKitch = parseVariance(files['vKitchen'].content);
+    const vKitch = safeParse('Variance Kitchen Front', parseVariance, files['vKitchen'].content, warnings,
+      o=>varSanity(o,'Kitchen Front')) || {area:'Kitchen Front',onHand:0,recorded:0,variance:0,byCategory:{}};
     setProgress(54,'Parsing Variance — Bar Main Storage…');
-    const vBarM  = parseVariance(files['vBarMain'].content);
+    const vBarM  = safeParse('Variance Bar Main', parseVariance, files['vBarMain'].content, warnings,
+      o=>varSanity(o,'Bar Main Storage')) || {area:'Bar Main Storage',onHand:0,recorded:0,variance:0,byCategory:{}};
     setProgress(60,'Parsing Variance — Bar Front…');
-    const vBarF  = parseVariance(files['vBarFront'].content);
+    const vBarF  = safeParse('Variance Bar Front', parseVariance, files['vBarFront'].content, warnings,
+      o=>varSanity(o,'Bar Front')) || {area:'Bar Front',onHand:0,recorded:0,variance:0,byCategory:{}};
     setProgress(64,'Parsing Variance — Shop…');
-    const vShop  = files['vShop']?parseVariance(files['vShop'].content):null;
+    const vShop  = files['vShop']?(safeParse('Variance Shop', parseVariance, files['vShop'].content, warnings, o=>varSanity(o,'Shop'))||null):null;
 
     // COS Calculations
     setProgress(68,'Calculating COS…');
@@ -1413,32 +1561,14 @@ async function generate(){
     const openFB    = openFood+openBarCD+openBarLQ;
     const openTotal = openFB+openShop;
 
-    // Food menu items from Income Analysis by sub-category
-    const foodSubcats={};
-    const lines=files['income'].content.split('\n');
-    const hi=lines.findIndex(l=>l.includes('Product;Category'));
-    for(const line of lines.slice(hi+1)){
-      const p=line.split(';').map(s=>s.trim());
-      if(p.length<13||!p[0]||p[0].startsWith(';;')||!p[1]) continue;
-      if(p[1]==='Food Menu'){
-        const sub=p[2]||'Other'; const excl=$R(p[11]);
-        if(excl>0) foodSubcats[sub]=(foodSubcats[sub]||0)+excl;
-      }
-    }
+    // Food menu items by sub-category — pulled from parser output (format-agnostic)
+    const foodSubcats=income.bySubCategory['Food Menu']||{};
     const foodMenuItems=Object.entries(foodSubcats)
       .filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])
       .map(([cat,rev])=>({cat,rev:rnd(rev),items:0}));
 
-    // Bar items
-    const barSubcats={};
-    for(const line of lines.slice(hi+1)){
-      const p=line.split(';').map(s=>s.trim());
-      if(p.length<13||!p[1]) continue;
-      if(p[1]==='Bar Sales'){
-        const sub=p[2]||'Other'; const excl=$R(p[11]);
-        if(excl>0) barSubcats[sub]=(barSubcats[sub]||0)+excl;
-      }
-    }
+    // Bar items by sub-category
+    const barSubcats=income.bySubCategory['Bar Sales']||{};
     const barItems=Object.entries(barSubcats)
       .filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])
       .map(([cat,rev])=>({cat,rev:rnd(rev),note:''}));
@@ -1555,11 +1685,13 @@ async function generate(){
     showOverlay(false);
     document.getElementById('successPanel').classList.add('on');
     setSteps(4);
+    showWarnings(warnings);
     window.scrollTo({top:0,behavior:'smooth'});
 
   } catch(err){
     showOverlay(false);
     showErr('Report generation failed: '+err.message+'. Check your CSV files and try again.');
+    showWarnings(warnings);
     console.error(err);
   }
 }
